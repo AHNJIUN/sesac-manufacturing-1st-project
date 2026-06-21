@@ -12,6 +12,7 @@ dependencies = [
     "beautifulsoup4>=4.12",
     "pypdf>=5.0",
     "pydantic>=2.7",
+    "pydantic-ai-slim[openai]>=1.107.0",
     "typing-extensions>=4.11",
 ]
 
