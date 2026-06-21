@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import time
 import types
@@ -79,12 +80,14 @@ def _state(
         "final_answer": None,
         "execution_plan": None,
         "supervisor_planner_decision": None,
+        "supervisor_replanner_decision": None,
         "sql_intent_decision": None,
         "orchestrator_decision": None,
         "active_task_id": None,
         "route": None,
         "intent": None,
         "agent_feedback": {},
+        "consumed_replan_report_index": None,
         "artifacts": {},
         "context_packet": None,
         "input_decision": None,
@@ -172,6 +175,7 @@ def _trace_turn(result: dict[str, Any]) -> dict[str, Any]:
         "context_packet": _jsonable(result.get("context_packet")),
         "execution_plan": _jsonable(result.get("execution_plan")),
         "supervisor_planner_decision": _jsonable(result.get("supervisor_planner_decision")),
+        "supervisor_replanner_decision": _jsonable(result.get("supervisor_replanner_decision")),
         "sql_intent_decision": _jsonable(result.get("sql_intent_decision")),
         "gate_reports": _jsonable(result.get("gate_reports")),
         "prediction_result": _jsonable(result.get("prediction_result")),
@@ -186,7 +190,41 @@ def _check_citation_visible(result: dict[str, Any], failures: list[str]) -> None
     if ev and getattr(ev, "status", None) == "OK":
         answer = _answer(result)
         _require(bool(getattr(ev, "citations", None)), "Evidence OK인데 citations 없음", failures)
-        _require("[출처]" in answer or "[C1]" in answer, "최종 답변에 citation 표시 없음", failures)
+        _require("[C1]" in answer, "최종 답변 본문에 citation 표시 없음", failures)
+        _require("[출처]" in answer, "최종 답변에 출처 목록 없음", failures)
+
+
+RAW_SCHEMA_TERMS = {
+    "tooling",
+    "spindle_bearing",
+    "spindle_drive",
+    "drive_system",
+    "coolant_system",
+    "guard_interlock",
+    "drive_fan",
+    "tool_wear",
+    "rotational_speed",
+    "process_temperature",
+    "air_temperature",
+}
+
+
+def _check_answer_quality(result: dict[str, Any], failures: list[str], *, mode: str) -> None:
+    answer = _answer(result)
+    _require(bool(answer.strip()), "final_answer가 비어 있음", failures)
+    _require(not re.search(r"\bscore\b|score=|점수\s*\(?\d", answer, re.I), f"답변에 내부 score/점수 노출: {answer}", failures)
+    leaked_terms = [term for term in RAW_SCHEMA_TERMS if re.search(rf"\b{re.escape(term)}\b", answer)]
+    _require(not leaked_terms, f"답변에 raw schema 용어 노출: {leaked_terms}", failures)
+
+    if mode == "sql_only":
+        banned_sections = ["현재 판단", "우선 점검 순서", "문서 근거"]
+        leaked_sections = [section for section in banned_sections if section in answer]
+        _require(not leaked_sections, f"SQL-only 답변에 부적절한 섹션 포함: {leaked_sections}", failures)
+        _require("조회 결과" in answer or "고장 이력" in answer or "반복 패턴" in answer, "SQL-only 답변이 조회 결과 중심으로 구성되지 않음", failures)
+
+    if mode == "combined":
+        _require("현재 판단" in answer or "위험 진단" in answer, "복합 답변에 현재 판단/위험 진단 없음", failures)
+        _require("이력" in answer or "사례" in answer, "복합 답변에 고장 이력/사례 요약 없음", failures)
 
 
 def _checks_intake_block(reason: str) -> Callable[[list[dict[str, Any]], dict[str, Any]], list[str]]:
@@ -209,7 +247,7 @@ def _check_sql_ok(result: dict[str, Any], g: dict[str, Any], failures: list[str]
     _require(sql is not None and sql.status in {"OK", "EMPTY"}, f"sql status 이상: {getattr(sql, 'status', None)} / {getattr(sql, 'error_message', None)}", failures)
     for sql_text in _sql_texts(sql):
         _require("failure_history" in sql_text, f"SQL이 failure_history를 사용하지 않음: {sql_text}", failures)
-        _require("machine_id" not in sql_text and "alarm_logs" not in sql_text and "sensor_readings" not in sql_text and "maintenance_history" not in sql_text, f"옛 설비별 SQL 흔적이 남음: {sql_text}", failures)
+        _require("alarm_logs" not in sql_text and "sensor_readings" not in sql_text and "maintenance_history" not in sql_text, f"legacy log table SQL 흔적이 남음: {sql_text}", failures)
         try:
             g["validate_sql_query"](sql_text, g["DEFAULT_SQL_DEPS"])
         except Exception as exc:  # noqa: BLE001
@@ -242,6 +280,7 @@ def _check_combined(results: list[dict[str, Any]], g: dict[str, Any]) -> list[st
     _require("현재 판단" in answer or "위험 진단" in answer, "현재 판단/위험 진단 섹션 없음", failures)
     _require("이력" in answer or "사례" in answer, "고장 이력/사례 요약 없음", failures)
     _require("문서 근거" in answer, "문서 근거 섹션 없음", failures)
+    _check_answer_quality(r, failures, mode="combined")
     _check_citation_visible(r, failures)
     return failures
 
@@ -255,6 +294,7 @@ def _check_failure_history_actions(results: list[dict[str, Any]], g: dict[str, A
     _require(bool(qtypes & {"failure_history", "corrective_actions", "similar_incidents"}), f"failure history query_type 없음: {qtypes}", failures)
     _require("prediction" not in _task_types(r), "이력 조회 전용 질문에서 prediction task가 생성됨", failures)
     _require("고장" in _answer(r) or "이력" in _answer(r) or "대응" in _answer(r), "답변에 고장 이력/대응 요약 없음", failures)
+    _check_answer_quality(r, failures, mode="sql_only")
     return failures
 
 
@@ -264,7 +304,7 @@ def _check_failure_patterns(results: list[dict[str, Any]], g: dict[str, Any]) ->
     _check_sql_ok(r, g, failures)
     joined = "\n".join(_sql_texts(r.get("sql_result")))
     _require("group by" in joined or "count(" in joined, f"반복 패턴 조회인데 집계 SQL이 아님: {joined}", failures)
-    _require("machine_id" not in joined, f"반복 패턴 SQL이 machine_id를 사용함: {joined}", failures)
+    _check_answer_quality(r, failures, mode="sql_only")
     return failures
 
 
@@ -299,6 +339,26 @@ def _check_multiturn_sql_followup(results: list[dict[str, Any]], g: dict[str, An
     _check_sql_ok(second, g, failures)
     joined = "\n".join(_sql_texts(second.get("sql_result")))
     _require("severity" in joined or "failure_type" in joined, f"후속 SQL이 이전 고장 이력 문맥을 반영하지 못함: {joined}", failures)
+    _check_answer_quality(second, failures, mode="sql_only")
+    return failures
+
+
+def _check_broad_problem_lookup_feature_context(results: list[dict[str, Any]], g: dict[str, Any]) -> list[str]:
+    first, second = results
+    failures: list[str] = []
+    _require(_artifact_status(first, "prediction") in {"OK", "PARTIAL"}, "1턴 prediction seed 실패", failures)
+    plan = second.get("execution_plan")
+    sql_task = next((t for t in getattr(plan, "tasks", []) if t.task_type == "sql"), None) if plan else None
+    task_params = getattr(sql_task, "params", {}) if sql_task else {}
+    _require("sql" in _task_types(second), "broad problem lookup에 sql task 없음", failures)
+    _require("query_scope" not in task_params, f"broad lookup SQL task에 legacy scope params가 남음: {task_params}", failures)
+    _check_sql_ok(second, g, failures)
+    joined = "\n".join(_sql_texts(second.get("sql_result")))
+    _require("failure_history" in joined, f"broad lookup SQL이 failure_history를 사용하지 않음: {joined}", failures)
+    answer = _answer(second)
+    _require("고장" in answer or "이력" in answer or "문제" in answer, "broad lookup 답변에 고장 이력 안내 없음", failures)
+    _require("최근 설비에서" not in answer and "해당 설비" not in answer and "이 설비" not in answer, f"구체 대상 없는 broad lookup 답변에 빈 대상 표현이 남음: {answer}", failures)
+    _check_answer_quality(second, failures, mode="sql_only")
     return failures
 
 
@@ -327,10 +387,10 @@ def _check_output_safety_direct(results: list[dict[str, Any]], g: dict[str, Any]
 def _check_structural_boundaries(results: list[dict[str, Any]], g: dict[str, Any]) -> list[str]:
     failures: list[str] = []
     planner_fields = set(g["SupervisorPlannerDecision"].model_fields)
-    _require("sql_scope" not in planner_fields and "sql_machine_id" not in planner_fields, f"SupervisorPlannerDecision에 설비별 SQL scope 필드가 남음: {planner_fields}", failures)
+    _require("sql_scope" not in planner_fields, f"SupervisorPlannerDecision에 legacy SQL scope 필드가 남음: {planner_fields}", failures)
     _require(g["DEFAULT_SQL_DEPS"].allowed_tables == ["failure_history"], f"SQL allowed_tables가 failure_history 전용이 아님: {g['DEFAULT_SQL_DEPS'].allowed_tables}", failures)
     _require("failure_history" in g["SQL_SCHEMA_GUIDE"], "SQL_SCHEMA_GUIDE에 failure_history 없음", failures)
-    _require("alarm_logs" not in g["SQL_SCHEMA_GUIDE"] and "sensor_readings" not in g["SQL_SCHEMA_GUIDE"], "SQL_SCHEMA_GUIDE에 옛 설비별 테이블이 남음", failures)
+    _require("alarm_logs" not in g["SQL_SCHEMA_GUIDE"] and "sensor_readings" not in g["SQL_SCHEMA_GUIDE"], "SQL_SCHEMA_GUIDE에 legacy log table이 남음", failures)
     _require("build_sql_from_query_type" not in g, "legacy SQL template builder가 남음", failures)
     return failures
 
@@ -393,7 +453,7 @@ def _check_text_to_sql_and_rag_quality(results: list[dict[str, Any]], g: dict[st
     unsafe_cases = [
         ("delete", "failure_history", "DELETE FROM failure_history WHERE id = 1 LIMIT 1"),
         ("missing_limit", "failure_history", "SELECT id, event_date, failure_type FROM failure_history ORDER BY event_date DESC"),
-        ("bad_column", "similar_incidents", "SELECT machine_id, event_date FROM failure_history LIMIT 50"),
+        ("bad_column", "similar_incidents", "SELECT incident_id, event_date FROM failure_history LIMIT 50"),
         ("bad_table", "failure_history", "SELECT id FROM alarm_logs LIMIT 50"),
     ]
     for case_name, query_type, sql_query in unsafe_cases:
@@ -419,6 +479,63 @@ def _check_text_to_sql_and_rag_quality(results: list[dict[str, Any]], g: dict[st
         g["vector_search"] = original_vector_search
     _require(low.get("status") == "LOW_RELEVANCE", f"낮은 score 문서가 LOW_RELEVANCE가 아님: {low}", failures)
     _require(all("source" in c and "chunk_index" in c for c in low.get("citations", [])), f"citation metadata 부족: {low.get('citations')}", failures)
+    return failures
+
+
+def _check_plan_and_execute_replan(results: list[dict[str, Any]], g: dict[str, Any]) -> list[str]:
+    failures: list[str] = []
+    evidence_task = g["TaskSpec"](
+        task_id="evidence_1",
+        task_type="evidence",
+        status="RUNNING",
+        params={"retrieval_profile": "troubleshooting_rag", "evidence_required": True, "focus": ["희귀 고장 절차"], "min_docs": 2, "require_citation": True},
+        success_criteria={"allow_empty": False, "require_citation": True},
+    )
+    final_task = g["TaskSpec"](task_id="final_1", task_type="final_answer", depends_on=["evidence_1"])
+    plan = g["ExecutionPlan"](intent="document_qa", tasks=[evidence_task, final_task], reason_summary="replan regression fixture")
+    ev = g["EvidenceArtifact"](status="EMPTY", documents=[], citations=[], evidence_summary="관련 문서 근거를 찾지 못했습니다.", is_retry=True)
+    report = g["GateReport"](
+        task_id="evidence_1",
+        gate_name="evidence_gate",
+        status="PLAN_REPAIR_REQUIRED",
+        route_hint="supervisor_replanner",
+        reason="retry 후에도 문서 근거 부족",
+        feedback="검색 범위를 넓히고 focus를 완화하세요.",
+    ).model_dump()
+
+    state = {
+        "execution_plan": plan,
+        "gate_reports": [report],
+        "active_task_id": "evidence_1",
+        "evidence_bundle": ev,
+        "artifacts": {"evidence": ev},
+    }
+    routed = g["orchestrator_dispatcher"](state)
+    decision = routed.get("orchestrator_decision")
+    route = routed.get("route")
+    _require(getattr(decision, "action", None) == "REPLAN", f"dispatcher가 REPLAN을 선택하지 않음: {decision}", failures)
+    _require(getattr(route, "next_node", None) == "supervisor_replanner", f"route가 supervisor_replanner가 아님: {route}", failures)
+
+    replan_state = dict(state)
+    replan_state.update(routed)
+    replanned = g["supervisor_replanner_node"](replan_state)
+    new_plan = replanned.get("execution_plan")
+    replanner_decision = replanned.get("supervisor_replanner_decision")
+    new_evidence_task = next((t for t in new_plan.tasks if t.task_id == "evidence_1"), None)
+    new_final_task = next((t for t in new_plan.tasks if t.task_id == "final_1"), None)
+
+    _require(getattr(replanner_decision, "action", None) == "PATCH_AND_RERUN", f"replanner action 이상: {replanner_decision}", failures)
+    _require(getattr(new_plan, "replan_count", 0) == 1, f"replan_count가 증가하지 않음: {new_plan}", failures)
+    _require(new_evidence_task is not None and new_evidence_task.rerun_count == 1, f"evidence rerun_count 이상: {new_evidence_task}", failures)
+    _require(new_evidence_task is not None and new_evidence_task.params.get("retrieval_profile") == "fallback_broad", f"evidence retrieval_profile patch 실패: {getattr(new_evidence_task, 'params', None)}", failures)
+    _require(new_final_task is not None and new_final_task.invalidated_by == "evidence_1", f"final task invalidation 실패: {new_final_task}", failures)
+
+    next_state = dict(replan_state)
+    next_state.update(replanned)
+    dispatched = g["orchestrator_dispatcher"](next_state)
+    dispatch_decision = dispatched.get("orchestrator_decision")
+    _require(getattr(dispatch_decision, "next_node", None) == "evidence_agent", f"replan 후 evidence_agent로 재실행되지 않음: {dispatch_decision}", failures)
+    _require(getattr(dispatch_decision, "action", None) == "RETRY_TASK", f"replan 후 action이 RETRY_TASK가 아님: {dispatch_decision}", failures)
     return failures
 
 
@@ -453,6 +570,8 @@ def scenarios() -> list[Scenario]:
         Scenario("S17_multiturn_evidence_followup", "2턴 문서 후속질문에서 이전 Evidence artifact를 context로 사용", [Turn("공구 마모와 스핀들 채터 점검 방법에 대한 문서 근거를 찾아줘."), Turn("방금 근거 기준으로 재발 방지 절차만 더 구체적으로 정리해줘.")], _check_multiturn_evidence_followup, tags=["multiturn", "rag", "context"]),
         Scenario("S18_structural_boundaries", "failure_history 중심 구조 경계 회귀 테스트", [], _check_structural_boundaries, mode="node", tags=["structure", "boundary"]),
         Scenario("S19_text_to_sql_rag_quality", "FailureHistory Text-to-SQL과 RAG 품질 회귀 테스트", [], _check_text_to_sql_and_rag_quality, mode="node", tags=["sql", "rag", "quality"]),
+        Scenario("S20_plan_and_execute_replan", "Gate-driven Plan-and-Execute targeted replan 회귀 테스트", [], _check_plan_and_execute_replan, mode="node", tags=["orchestration", "replan"]),
+        Scenario("S21_broad_problem_lookup_feature_context", "전체 문제 영역 조회는 이전 입력 피처를 SQL scope로 오염시키지 않음", [Turn("Type M 피처 샘플이야. 공기온도 298, 공정온도 309, 회전속도 1320, 토크 62, 공구마모 215로 위험 진단해줘.", FEATURES_HIGH_RISK), Turn("최근에 문제 있었던 곳 조회해줘.")], _check_broad_problem_lookup_feature_context, tags=["multiturn", "context", "sql"]),
     ]
 
 

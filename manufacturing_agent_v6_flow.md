@@ -1,6 +1,6 @@
 # Manufacturing Agent v6 전체 흐름 정리
 
-이 문서는 `manufacturing_agent_v6.ipynb` 기준의 현재 LangGraph 제조업 Agent 구조를 설명한다. 핵심은 ReAct가 아니라 `SupervisorPlan` 기반의 Graph-based Orchestrator-Worker 구조다. LLM은 자유롭게 tool을 반복 선택하지 않고, 정해진 graph node 안에서 typed decision, 근거 요약, safety 판단 등에 제한적으로 사용된다. 테스트 통과를 위해 특정 시나리오를 고정 문구로 덮어쓰는 방식은 사용하지 않는다. gate가 실패하면 실패 상태와 reason을 남기는 것을 우선한다.
+이 문서는 `manufacturing_agent_v6.ipynb` 기준의 현재 LangGraph 제조업 Agent 구조를 설명한다. 핵심은 ReAct가 아니라 `SupervisorPlan` 기반의 **Gate-driven Manufacturing Plan-and-Execute** 구조다. LLM은 자유롭게 tool을 반복 선택하지 않고, 정해진 graph node 안에서 typed decision, 근거 요약, safety 판단 등에 제한적으로 사용된다. 테스트 통과를 위해 특정 시나리오를 고정 문구로 덮어쓰는 방식은 사용하지 않는다. gate가 실패하면 실패 상태와 reason을 남기고, 같은 params retry로 해결되기 어려운 경우에만 targeted replan을 수행한다.
 
 ## 1. 전체 실행 흐름
 
@@ -13,6 +13,7 @@ START
    ├─ prediction_agent → prediction_gate → orchestrator_dispatcher
    ├─ sql_agent        → sql_gate        → orchestrator_dispatcher
    ├─ evidence_agent   → evidence_gate   → orchestrator_dispatcher
+   ├─ supervisor_replanner → orchestrator_dispatcher
    └─ final_answer
 → output_safety_gate
 → memory_writer
@@ -24,13 +25,14 @@ START
 - `intake_gate`가 입력을 차단하면 `context_manager`로 가지 않고 바로 `final_answer`로 이동한다.
 - 각 worker는 직접 최종 답변을 만들지 않고 typed artifact만 생성한다.
 - 각 gate는 worker를 직접 재실행하지 않고 `GateReport`만 남긴다.
-- 재실행 여부와 다음 node 선택은 `orchestrator_dispatcher`가 `ExecutionPlan`, task status, `GateReport`, retry count를 보고 결정한다.
+- 재실행 여부와 다음 node 선택은 `orchestrator_dispatcher`가 `ExecutionPlan`, task status, `GateReport`, retry/replan count를 보고 결정한다.
+- `GateReport.status == PLAN_REPAIR_REQUIRED`이면 dispatcher는 worker를 바로 재실행하지 않고 `supervisor_replanner`로 보낸다.
 
 ## 2. 현재 구조 판정: 오케스트레이터인가?
 
-결론부터 말하면, 현재 `manufacturing_agent_v6.ipynb`는 단순 Router가 아니라 **단일 계층 Graph-based Orchestrator-Worker 구조**로 보는 것이 맞다.
+결론부터 말하면, 현재 `manufacturing_agent_v6.ipynb`는 단순 Router가 아니라 **Gate-driven Plan-and-Execute 변형 구조**로 보는 것이 맞다.
 
-다만 아직 **Hierarchical Supervisor**나 **LLM Compiler 기반 병렬 fan-out 구조**까지 구현된 것은 아니다. 현재 구조는 `supervisor_planner`가 task와 task별 `params/success_criteria`를 만들고, `orchestrator_dispatcher`가 graph route를 순차적으로 결정하며, 각 worker와 gate가 artifact/report를 주고받는 단일 orchestrator 구조다.
+다만 아직 **Hierarchical Supervisor**나 **LLM Compiler 기반 병렬 fan-out 구조**까지 구현된 것은 아니다. 현재 구조는 `supervisor_planner`가 task와 task별 `params/success_criteria`를 만들고, `orchestrator_dispatcher`가 graph route를 순차적으로 결정하며, 각 worker와 gate가 artifact/report를 주고받는다. Gate가 “같은 params retry로는 어렵다”고 판단하면 `supervisor_replanner`가 실패 task만 patch하고 downstream final task를 invalidate한다.
 
 ### 2.1 Orchestrator로 볼 수 있는 이유
 
@@ -53,6 +55,7 @@ START
 Custom LangGraph Workflow
 + SupervisorPlanner
 + SupervisorPlan-based OrchestratorDispatcher
++ Targeted SupervisorReplanner
 + Worker Subgraphs/Nodes
 + Evaluator Gates
 + Typed Artifacts
@@ -71,7 +74,7 @@ Custom LangGraph Workflow
 - 실패한 worker는 gate가 아니라 dispatcher가 retry/recovery 대상으로 본다.
 - 최종 답변 진입은 “어떤 artifact가 생겼는가”가 아니라 “필수 task가 완료/차단/입력요청 상태로 수렴했는가”에 의해 결정된다.
 
-즉 현재 `orchestrator_dispatcher`는 단순 routing 함수가 아니라 **task lifecycle manager**에 가깝다.
+즉 현재 `orchestrator_dispatcher`는 단순 routing 함수가 아니라 **task lifecycle manager**에 가깝다. Plan-and-Execute 관점에서는 `SupervisorPlanner`가 최초 plan을 만들고, dispatcher가 execute 상태를 관리하며, gate가 replan 필요성을 보고하고, `SupervisorReplanner`가 특정 task만 patch한다.
 
 ### 2.3 God Supervisor가 아닌 이유
 
@@ -243,7 +246,7 @@ failure_history: 샘플 고장 사례, 원인, 조치, 재발 방지, downtime, 
 
 LLM은 여기서 `ContextCarryoverDecision`을 만든다. 예를 들어 현재 질문이 이전 SQL/evidence/prediction artifact를 실제로 참조하는지 판단한다. 이 decision은 `referenced_artifacts`, `uses_previous_*`, 추론된 기간과 이전 artifact 참조 여부만 담으며, SQL query type이나 evidence focus 같은 task planning 결과는 만들지 않는다.
 
-SQL DB는 더 이상 설비별 로그 DB가 아니다. 따라서 ContextManager는 이전 대화의 설비 ID를 SQL 조건으로 전달하지 않는다. 이전 SQL artifact나 이전 prediction artifact가 현재 질문에 참고되는지만 표시하고, 고장 유형/부품/증상/기간을 어떻게 조회할지는 SupervisorPlanner와 SQLAgent의 typed contract가 담당한다.
+SQL DB는 더 이상 설비별 로그 DB가 아니다. 따라서 ContextManager는 이전 대화의 식별자성 표현을 SQL 조건으로 전달하지 않는다. 이전 SQL artifact나 이전 prediction artifact가 현재 질문에 참고되는지만 표시하고, 고장 유형/부품/증상/기간을 어떻게 조회할지는 SupervisorPlanner와 SQLAgent의 typed contract가 담당한다.
 
 이전 맥락은 같은 `thread_id` 안에서 항상 전달한다. `ContextPacket.recent_turns_summary`, `previous_prediction_summary`, `previous_sql_summary`, `previous_evidence_summary`는 SupervisorPlanner와 필요한 worker에 참고 맥락으로 제공된다.
 
@@ -306,6 +309,44 @@ evidence_1.params:
 - 실행 가능한 worker가 없으면 `final_answer`로 보냄
 
 `orchestrator_dispatcher`는 plan이 없을 때 planner를 직접 호출하지 않는다. graph상 `supervisor_planner → orchestrator_dispatcher`가 보장되어야 하며, plan이 없으면 구조 오류로 본다.
+
+### 8.1 Targeted Replan
+
+현재 replan은 전체 plan을 다시 만드는 방식이 아니다. Gate가 `PLAN_REPAIR_REQUIRED`를 남긴 경우에만 `supervisor_replanner`가 호출되고, 실패한 task의 `params`와 `success_criteria`만 patch한다.
+
+```text
+WorkerAgent
+→ Gate(status=PLAN_REPAIR_REQUIRED)
+→ OrchestratorDispatcher(action=REPLAN)
+→ SupervisorReplanner
+→ patched ExecutionPlan
+→ OrchestratorDispatcher
+→ failed task targeted rerun
+```
+
+Replan 계약:
+
+- `retry_count`: 같은 params로 worker를 다시 실행한 횟수
+- `rerun_count`: `supervisor_replanner`가 params를 patch한 뒤 다시 실행한 횟수
+- `max_reruns`: targeted replan 무한 루프 방지
+- `plan_revision`: plan patch가 발생할 때 증가
+- `invalidated_by`: upstream task patch 때문에 다시 생성해야 하는 downstream task 표시
+
+현재 deterministic replanner rule:
+
+| 대상 task | 조건 | patch |
+|---|---|---|
+| `evidence` | retry 후에도 `EMPTY` 또는 `LOW_RELEVANCE` | `retrieval_profile=fallback_broad`, focus에 gate feedback 추가, `min_docs=1` |
+| `sql` | Text-to-SQL 검증/실행 실패 또는 SQL policy 차단 | `repair_hint`, `strict_schema_check=True` 추가 |
+
+`PATCH_AND_RERUN`이 발생하면 `final_1.status`는 다시 `PENDING`이 되고 `invalidated_by`에 upstream task id가 남는다. 즉 upstream artifact가 바뀌면 기존 final answer를 재사용하지 않는다.
+
+중요한 경계:
+
+- `orchestrator_dispatcher`는 replan 내용을 직접 만들지 않는다.
+- `supervisor_replanner`는 worker를 직접 실행하지 않는다.
+- `supervisor_replanner`는 새 task를 추가하지 않고 기존 task patch만 수행한다.
+- Prediction `NEEDS_INPUT`은 replan하지 않고 final answer에서 입력 부족을 안내한다.
 
 핵심 경계:
 
@@ -410,7 +451,7 @@ SQL query type 정책:
 - `corrective_actions`: 과거 corrective/preventive action과 root cause를 중심으로 조회한다.
 - `repeated_patterns`: failure type, component, root cause 등의 반복 패턴을 집계한다.
 
-중요한 점은 SQL이 더 이상 설비 ID 기반 이력 조회가 아니라는 것이다. `failure_history`에는 설비 ID 조건이 없고, SQLAgent는 고장 유형, 부품, 증상, 원인, 대응 조치, 기간 기준으로만 조회한다. 현재 입력 feature 기반 판단은 `prediction_agent`가 담당하고, SQLAgent는 그 판단과 연결 가능한 과거 고장/정비 사례를 구조화해서 가져온다.
+중요한 점은 SQL이 더 이상 설비 식별자 기반 이력 조회가 아니라는 것이다. `failure_history`는 고장 사례 단위 테이블이며, SQLAgent는 고장 유형, 부품, 증상, 원인, 대응 조치, 기간 기준으로만 조회한다. 현재 입력 feature 기반 판단은 `prediction_agent`가 담당하고, SQLAgent는 그 판단과 연결 가능한 과거 고장/정비 사례를 구조화해서 가져온다.
 
 생성된 SQL은 실행 전에 `validate_sql_query()`와 `EXPLAIN QUERY PLAN`으로 검증한다. 검증은 SELECT-only, forbidden keyword, allowed table, LIMIT, 실제 schema/column 존재 여부를 계속 강제한다. 실행은 `execute_readonly_sql(sql, params, deps)`를 통해 readonly query로만 수행한다.
 
@@ -421,16 +462,16 @@ SQL source:
 
 ## 10. Gate와 Recovery 정책
 
-| Gate | PASS 기준 | Retry 기준 | 최종 답변으로 가는 경우 |
-|---|---|---|---|
-| `prediction_gate` | `PredictionResult.status in {"OK", "PARTIAL"}` | artifact 없음 또는 `FAIL` | `NEEDS_INPUT`이면 `final_answer`에서 입력 부족 안내 |
-| `sql_gate` | `SQLHistoryArtifact.status == "OK"`이고 result별 SQL policy 위반이 없음 | 실행 실패 등 retry 가능한 실패 | `EMPTY`, `INVALID_REQUEST`, `BLOCKED`는 제한 답변 또는 추가 입력 요청. 복합 결과 일부가 `OK`가 아니면 `PASS_WITH_WARNINGS` |
-| `evidence_gate` | 문서와 citation이 있는 `OK` | 명시적 근거 요청인데 `EMPTY`/`LOW_RELEVANCE`이고 아직 retry가 아닌 경우 | retry 후에도 부족하면 경고 포함 답변 |
-| `output_safety_gate` | 위험 실행 표현이 없는 최종 답변 | 해당 없음 | block 시 `GateReport`에 실패를 남기고, 안전한 대체 답변이 있을 때만 교체 |
+| Gate | PASS 기준 | Retry 기준 | Replan 기준 | 최종 답변으로 가는 경우 |
+|---|---|---|---|---|
+| `prediction_gate` | `PredictionResult.status in {"OK", "PARTIAL"}` | artifact 없음 또는 `FAIL` | 없음 | `NEEDS_INPUT`이면 `final_answer`에서 입력 부족 안내 |
+| `sql_gate` | `SQLHistoryArtifact.status == "OK"`이고 result별 SQL policy 위반이 없음 | artifact 없음 등 단순 재시도 가능 실패 | Text-to-SQL 검증/실행 실패 또는 policy 차단이지만 `max_reruns` 여지가 있는 경우 | `EMPTY`, `INVALID_REQUEST`, `BLOCKED`는 제한 답변 또는 추가 입력 요청. 복합 결과 일부가 `OK`가 아니면 `PASS_WITH_WARNINGS` |
+| `evidence_gate` | 문서와 citation이 있는 `OK` | 명시적 근거 요청인데 `EMPTY`/`LOW_RELEVANCE`이고 아직 retry가 아닌 경우 | retry 후에도 `EMPTY`/`LOW_RELEVANCE`이고 `max_reruns` 여지가 있는 경우 | replan 후에도 부족하면 경고 포함 답변 |
+| `output_safety_gate` | 위험 실행 표현이 없는 최종 답변 | 해당 없음 | 해당 없음 | block 시 `GateReport`에 실패를 남기고, 안전한 대체 답변이 있을 때만 교체 |
 
 Gate는 직접 worker를 호출하지 않는다. `GateReport`만 추가하고, dispatcher가 재실행 또는 다음 route를 결정한다.
 
-Gate는 상위 `supervisor_planner_decision`을 직접 참조하지 않고, active task의 `params/success_criteria`를 기준으로 검증한다. 예를 들어 `evidence_gate`는 `evidence_required`, `min_docs`, `require_citation`을 기준으로 `PASS`, `PASS_WITH_WARNINGS`, `RETRYABLE_FAIL`을 결정한다.
+Gate는 상위 `supervisor_planner_decision`을 직접 참조하지 않고, active task의 `params/success_criteria`를 기준으로 검증한다. 예를 들어 `evidence_gate`는 `evidence_required`, `min_docs`, `require_citation`을 기준으로 `PASS`, `PASS_WITH_WARNINGS`, `RETRYABLE_FAIL`, `PLAN_REPAIR_REQUIRED`를 결정한다.
 
 ## 11. Final Answer 조립 규칙
 
