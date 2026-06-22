@@ -1,0 +1,9 @@
+  language: "ko"
+
+  reviews:
+    auto_review:
+      enabled: true
+      drafts: false
+    path_filters:
+      - "!**/*.lock"
+      - "!**/agent_data/**"
