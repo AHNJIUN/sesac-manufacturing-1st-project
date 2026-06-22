@@ -17,8 +17,7 @@ agent_data/
 
 # Secrets — 키를 커밋하지 마세요
 .env
-*.env
-.env.*
+
 
 # Personal Space
 personal_space/
