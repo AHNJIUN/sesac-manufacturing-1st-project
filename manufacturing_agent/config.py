@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.observability import record_llm_usage  # OTel LLM 사용량 계측
 
@@ -72,19 +72,9 @@ RECENT_CONTEXT_KEEP  = int(os.environ.get("RECENT_CONTEXT_KEEP", "5"))   # threa
 MEMORY_SUMMARY_CHAR_CAP = int(os.environ.get("SUMMARY_CHAR_CAP", "4000"))  # 장기메모리 요약 본문 길이 상한
 
 _HAS_KEY = bool(os.environ.get("OPENAI_API_KEY"))
-print(".env file:", "OK" if _ENV_EXISTS else "MISSING")
-print(".env loaded:", "OK" if _ENV_LOADED else "SKIPPED")
-print("OpenAI API key:", "OK" if _HAS_KEY else "MISSING")
-print("Chat model:", DEFAULT_MODEL)
-print("Embedding model:", EMBED_MODEL)
-print("Use OpenAI embeddings:", "YES" if USE_OPENAI_EMBEDDINGS else "NO(local hash)")
 
 _LANGSMITH_ENABLED = LANGSMITH_TRACING.lower() in {"1", "true", "yes", "on"}
 _LANGSMITH_HAS_KEY = bool(os.environ.get("LANGSMITH_API_KEY"))
-print("LangSmith tracing:", "OK" if _LANGSMITH_ENABLED else "OFF")
-print("LangSmith API key:", "OK" if _LANGSMITH_HAS_KEY else "MISSING")
-print("LangSmith project:", LANGSMITH_PROJECT)
-print("LangSmith endpoint:", LANGSMITH_ENDPOINT)
 
 if _LANGSMITH_ENABLED and _LANGSMITH_HAS_KEY:
     try:
@@ -173,7 +163,6 @@ def call_llm(system: str, user: str, *, tier: str = "default") -> str:
     raise last_exc
 
 
-print("LLM 모드:", f"REAL(default={DEFAULT_MODEL}, classifier={_CLASSIFIER_MODEL}, final={DEFAULT_MODEL}/2048)")
 
 # import * 가 밑줄(_x) 이름까지 가져오도록 명시 export
 __all__ = [n for n in dir() if not n.startswith("__")]

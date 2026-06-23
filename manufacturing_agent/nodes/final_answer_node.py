@@ -109,38 +109,26 @@ def _short_failure(code: Any) -> str:
 
 FINAL_ANSWER_SYSTEM_PROMPT = """
 너는 제조 설비 진단 AI Agent의 최종 답변 작성자다.
+공정 엔지니어·설비 엔지니어가 바로 읽고 판단할 수 있는 하나의 자연스러운 답변을 작성하는 것이 역할이다.
 
-너의 역할은 아래 facts sheet(현재 위험 진단 요약, 최근 이력 요약, 문서 근거 요약, 안전 판단 요약, 정확 수치 근거)를
-바탕으로, 현장 작업자가 바로 읽고 판단할 수 있는 하나의 자연스러운 답변을 작성하는 것이다.
+역할 범위:
+- 아래 facts sheet 안의 정보만 사용해 서술 본문을 작성한다. 없는 정보는 "확인 필요"로 표현한다.
+- 수치 블록(고장 근거 표·체크리스트·[출처])과 맨 앞 종합 판단 배너는 시스템이 정확한 값으로 자동 첨부한다.
+  너는 그것을 직접 만들거나 본문에서 반복하지 않는다.
 
-핵심 원칙:
-- 디버그 로그가 아니라 현장 판단에 도움이 되는 답변을 쓴다. 여러 결과를 단순히 이어붙이지 말고 하나의 진단 답변으로 종합한다.
-- facts sheet 안의 정보만 사용한다. 없는 정보는 추정하지 말고 "확인 필요", "근거 부족", "추가 점검 필요"로 표현한다.
-- 숫자(토크, 공구마모, 온도, 회전속도, 건수, 다운타임, 비율, 임계값 등)는 facts sheet와 '정확 수치 근거'에 있는 값만 쓴다.
-  새로운 숫자·계산식·임계값을 절대 지어내지 마라.
-- 진단·이력의 실제 측정/계산값은 0~1 내부 점수가 아니므로 본문에 실제 단위값으로 구체적으로 녹여 쓴다.
-  예: "토크 62 N·m, 공구마모 215분으로 과부하·공구마모 위험", "최근 30일 10건, 총 다운타임 420분".
-- 내부 점수(score), query_type, SQL, raw component code(tooling, drive_system 등)는 출력하지 않는다. 필요하면 한국어로 풀어 쓴다.
-- 답변은 3~5개의 짧은 섹션으로 제한한다. markdown # heading marker(####)나 긴 보고서식 문단을 쓰지 않고, 짧은 일반 섹션 제목을 쓴다.
-- answer_mode와 section_guidance를 따른다. 모든 요청에 같은 섹션을 강제로 붙이지 않는다.
-- 현재 위험 진단 결과가 없으면 "위험 없음"이라고 단정하지 말고, "현재 위험 진단은 별도로 수행되지 않았고 최근 이력 기준 주의 신호를 요약한다"고 표현한다.
-- 현재 위험 진단 요약이 "입력 부족:"으로 시작할 때만 입력 부족을 안내한다. 입력이 충분하면 입력 부족 표현을 쓰지 않는다.
-- 문서 citation이 있으면 관련 문장에 [C1], [C2] 형식으로 인용하고, 없는 근거를 새로 만들지 않는다.
+본문 작성 규칙:
+- [섹션 작성 지침]을 최우선으로 따른다. 섹션 개수·구성·문체는 해당 지침만 기준으로 한다.
+- facts sheet에 없는 숫자(토크·온도·건수·비율·임계값 등)는 절대 만들지 않는다.
+  실제 측정·집계값은 단위를 붙여 구체적으로 쓴다. 예: "토크 62 N·m", "30일 10건 420분".
+- 본문 핵심은 두 가지다. ① 가장 심각한 위험 원인 1~2가지가 "왜 위험한지" ② "가장 먼저 확인할 것".
+  계산식·임계값 목록·점검 체크리스트는 시스템이 뒤에 붙이므로 본문에 쓰지 않는다.
+- [답변 모드]가 NEEDS_INPUT일 때만 입력 부족을 안내한다. 그 외 모드에서 입력 부족 표현을 쓰지 않는다.
+- citation이 있으면 관련 문장에 [C1] 형식으로 표시한다. 없는 근거를 새로 만들지 않는다.
+- raw 코드(tool_wear, drive_system, score 수치, query_type 등)는 출력하지 않는다.
+- [안전 판단 요약]의 현장 확인 권고는 본문 말미에 자연스럽게 녹인다. 승인·지시 표현은 쓰지 않는다.
+- 내부 처리 과정, Agent 이름, 라우팅 경로는 설명하지 않는다.
 
-자동 첨부(중요):
-- '고장 종류별 근거(규칙/계산/영향 변수)' 표와 '지금 점검할 일' 체크리스트, '[출처]'는 시스템이 정확한 수치로 본문 뒤에 자동 첨부한다.
-- 너는 그 표/체크리스트를 직접 만들지 말고, 본문에서는 핵심 해석과 가장 먼저 할 일을 자연어로 설명만 하라.
-- 맨 앞 '종합 판단' 한 줄 상태 표시도 시스템이 자동으로 붙이므로 너는 따로 만들지 마라.
-
-안전 원칙:
-- 위험한 운전 지속, 경보 무시, 안전장치 해제, LOTO 생략, 무자격 정비를 허용하지 않는다.
-- 운전 조건 변경이나 테스트 수행을 직접 지시하지 말고, 승인된 절차와 담당자 판단 하에 검토할 항목으로 표현한다.
-- 정지/재가동/정비 승인 여부는 현장 안전 책임자와 설비 담당자가 판단해야 한다고 안내한다.
-- 내부 처리 과정, 라우팅 경로, Agent 이름, DB 조회 로그는 설명하지 않는다.
-
-답변은 한국어로 작성하고, 현장 작업자가 이해할 수 있게 간결하게 쓴다.
-첫 문단에는 answer_mode에 맞는 결론을 2~3문장으로 쓴다(현재 위험 진단이 있을 때만 현재 위험 수준을 말한다).
-최종 출력에는 자기검토 과정을 포함하지 말고, 사용자에게 보여줄 답변 본문만 작성하라.
+한국어로, 간결하게 작성한다. 최종 출력에는 자기검토 과정을 포함하지 말고 답변 본문만 작성하라.
 """.strip()
 
 FINAL_ANSWER_USER_PROMPT = """
@@ -382,9 +370,9 @@ def _section_guidance_for_answer(mode: str, ev: Optional[EvidenceArtifact], cita
         )
     if mode in {"COMBINED", "PREDICTION_WITH_EVIDENCE"}:
         return (
-            "현재 위험 진단 → 최근 이력 요약 → 지금 점검할 일 → 문서 근거 → 주의사항 순서로 작성한다. "
+            "현재 위험 진단 → 최근 이력 요약 → 문서 근거 → 주의사항 순서로 작성한다. "
             "문서 citation이 있으면 본문에 [C1] 형태로 표시하고, 없는 문서 근거를 새로 만들지 않는다. "
-            "단, '고장 종류별 근거' 표와 '지금 점검할 일' 체크리스트는 시스템이 자동 첨부하므로 본문에서는 해석만 덧붙인다."
+            "'고장 근거 표'와 '지금 점검할 일' 체크리스트는 시스템이 자동 첨부한다 — 본문에서 만들지 않는다."
         )
     if mode == "PREDICTION_ONLY":
         return (
@@ -398,11 +386,19 @@ def _section_guidance_for_answer(mode: str, ev: Optional[EvidenceArtifact], cita
         return "고장 이력 요약과 문서 근거를 연결해 작성한다. 현재 위험 진단 섹션은 만들지 않는다."
     return "사용자 질문에 직접 답하되, 없는 artifact를 근거로 한 섹션은 만들지 않는다."
 
+_SAFETY_ACTION_KO = {
+    "ALLOW": "일반 제조 질문",
+    "ANSWER_SAFELY": "안전 자문 요청 (모델이 재가동·조치 승인을 대신하지 않음)",
+    "BLOCK_DANGEROUS_EXECUTION": "위험 실행 요청 — 안내 불가",
+    "HUMAN_HANDOFF": "현장 책임자 직접 확인 필요",
+}
+
 def _safety_summary_for_answer(state: ManufacturingState, pred: Optional[PredictionResult]) -> str:
     lines = []
     intake = state.get("intake_decision")
     if intake:
-        lines.append(f"요청 안전 판정: {intake.safety_action}. {intake.safety_reason}")
+        action_ko = _SAFETY_ACTION_KO.get(intake.safety_action, intake.safety_action)
+        lines.append(f"요청 성격: {action_ko}. {intake.safety_reason}")
     if pred and pred.safety_hints:
         for h in pred.safety_hints[:3]:
             required = ", ".join(h.required_checks or []) or "현장 확인 필요"
@@ -527,7 +523,7 @@ def _final_answer_quality_feedback(ctx: dict, answer: str) -> list[str]:
         issues.append("raw schema 용어를 한국어 현장 용어로 풀어 쓰세요: " + ", ".join(sorted(set(raw_terms))[:6]))
     if ctx.get("citations") != "사용 가능한 citation 없음" and not re.search(r"\[C\d+\]", answer):
         issues.append("사용 가능한 citation이 있으면 관련 문장에 [C1] 형식으로 표시하세요.")
-    if not ctx.get("prediction_summary", "").startswith("입력 부족:") and "입력 부족" in answer:
+    if ctx.get("answer_mode") != "NEEDS_INPUT" and "입력 부족" in answer:
         issues.append("입력 부족 상태가 아니므로 [입력 부족] 섹션이나 표현을 제거하세요.")
     if re.search(r"(?m)^\s*#{1,6}\s+", answer):
         issues.append("markdown # heading marker를 쓰지 말고 짧은 일반 섹션 제목으로 작성하세요.")

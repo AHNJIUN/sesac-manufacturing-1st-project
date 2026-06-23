@@ -7,7 +7,7 @@ from manufacturing_agent.gates import patterns
 
 
 def test_forbidden_patterns_match_dangerous_request():
-    assert any(re.search(p, "점검 없이 재가동해", re.I) for p in patterns.FORBIDDEN_PATTERNS)
+    assert any(re.search(p, "점검 없이 재가동해줘", re.I) for p in patterns.FORBIDDEN_PATTERNS)
 
 
 def test_forbidden_patterns_ignore_safe_question():

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import OrchestratorDecision, RouteDecision, TaskSpec
@@ -84,4 +84,3 @@ def route_after_output_safety(state) -> str:
     return "memory_writer"
 
 
-print("dispatcher / route_policy 정의 완료")

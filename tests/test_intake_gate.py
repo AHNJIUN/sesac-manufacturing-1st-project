@@ -101,7 +101,7 @@ def test_deterministic_backstop_overrides_wrong_allow(stub_llm):
     """LLM이 ALLOW로 잘못 허용해도 _is_forbidden_action이 위험 실행으로 차단한다."""
     stub = stub_llm(ig)
     stub.set_json(_intake_json())  # safety_action=ALLOW
-    out = ig.intake_gate(_state("점검 없이 재가동해"))
+    out = ig.intake_gate(_state("점검 없이 재가동해줘"))
     assert out["input_decision"].blocked is True
     assert out["input_decision"].reason == "dangerous_request"
     assert out["input_decision"].layer == "hybrid"

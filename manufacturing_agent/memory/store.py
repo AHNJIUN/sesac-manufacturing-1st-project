@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import DiagnosisContext
@@ -137,7 +137,8 @@ class ConversationStore:
             conn.executemany("DELETE FROM diagnosis_contexts WHERE id=?", [(x,) for x in stale_ids])
 
     # --- read ---
-    def recent_turns(self, user_id, limit=8, thread_id=None) -> list[dict]:
+    def recent_turns(self, user_id, limit, thread_id=None) -> list[dict]:
+        # limit은 호출측이 명시한다(과거 기본값 8은 항상 덮어써지던 잔재라 제거). 실제 윈도우는 context.packer.RECENT_TURN_WINDOW.
         # thread_id가 주어지면 그 대화로만 한정한다(다른 thread 대화 누수 방지).
         # thread_id가 없을 때만 user 전체에서 조회한다.
         with self._conn() as c:
@@ -231,4 +232,3 @@ class RunStore:
 
 conversation_store = ConversationStore()
 run_store = RunStore()
-print("장기 메모리(SQLite) 준비 완료:", LONGTERM_DB)

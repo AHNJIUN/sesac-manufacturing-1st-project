@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.agents.evidence_agent import evidence_agent
@@ -107,4 +107,3 @@ def make_sqlite_saver(path: str = CHECKPOINT_DB) -> SqliteSaver:
     conn = sqlite3.connect(path, check_same_thread=False)
     return SqliteSaver(conn, serde=make_checkpoint_serde())
 
-print("build_graph(Gate-driven Plan-and-Execute + targeted replan + output safety) 정의 완료")

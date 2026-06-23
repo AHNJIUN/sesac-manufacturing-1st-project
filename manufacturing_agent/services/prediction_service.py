@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.policy import STANDARD_FEATURES
@@ -141,4 +141,3 @@ def run_prediction(feats: dict) -> dict:
             "risks": risks, "evidence_hints": build_evidence_hints(risks, missing),
             "safety_hints": build_safety_hints(risks), "confidence": confidence,
             "limitations": limitations}
-print("prediction_service 정의 완료")

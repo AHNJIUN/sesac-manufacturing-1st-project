@@ -1,7 +1,7 @@
 from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
-from manufacturing_agent.context.policy import PER_TURN_CHAR_CAP, RECENT_SUMMARY_CHAR_BUDGET, STANDARD_FEATURES, detect_injection
+from manufacturing_agent.context.policy import PER_TURN_CHAR_CAP, RECENT_SUMMARY_CHAR_BUDGET, RECENT_USER_TURN_LIMIT, STANDARD_FEATURES, detect_injection
 from manufacturing_agent.contracts.context import AgentContextPacket, ContextCarryoverDecision, ContextPacket, MachineValue
 
 # ---------- context/context_packer.py ----------
@@ -62,9 +62,13 @@ def _summarize_recent_turns(turns: list[dict], limit: int = 6, chars: Optional[i
     토큰 폭주 방지를 위해 각 턴 본문은 PER_TURN_CHAR_CAP로, 전체 길이는 RECENT_SUMMARY_CHAR_BUDGET로 캡한다(최신 우선)."""
     seq = list(turns or [])
     if user_all:
-        assistant_idx = [i for i, t in enumerate(seq) if t.get("role") == "assistant"]
-        keep = set(assistant_idx) if assistant_limit is None else set(assistant_idx[-assistant_limit:])
-        selected = [t for i, t in enumerate(seq) if t.get("role") != "assistant" or i in keep]
+        # 주 제어: 사용자 턴은 최근 RECENT_USER_TURN_LIMIT개, assistant 턴은 최근 assistant_limit개만 유지(순서 보존).
+        # 기억 깊이가 발화 길이가 아니라 '턴 수'로 예측 가능해진다. 글자 예산(_apply_char_budget)은 백스톱으로만 동작.
+        user_idx = [i for i, t in enumerate(seq) if t.get("role") == "user"]
+        asst_idx = [i for i, t in enumerate(seq) if t.get("role") == "assistant"]
+        keep = set(user_idx if RECENT_USER_TURN_LIMIT is None else user_idx[-RECENT_USER_TURN_LIMIT:])
+        keep |= set(asst_idx if assistant_limit is None else asst_idx[-assistant_limit:])
+        selected = [t for i, t in enumerate(seq) if i in keep]
     else:
         selected = seq[-limit:]
     per_turn_cap = chars if chars is not None else PER_TURN_CHAR_CAP

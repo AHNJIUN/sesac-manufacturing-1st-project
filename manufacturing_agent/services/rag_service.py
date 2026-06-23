@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import PredictionResult
@@ -351,4 +351,3 @@ def rag_search(question: str, profile: str, prediction: Optional[PredictionResul
     return {"plan": plan, "documents": relevant, "citations": build_citations(relevant), "status": "OK", "limitations": []}
 
 
-print("rag_service / citation_service 정의 완료")

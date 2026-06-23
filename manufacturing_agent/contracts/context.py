@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 
@@ -347,4 +347,3 @@ class RunTrace(BaseModel):
     request_id: str = ""
     events: list[dict] = Field(default_factory=list)
 
-print("contracts 정의 완료 (SupervisorPlan Orchestrator + typed artifacts)")

@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 
@@ -9,8 +9,11 @@ STANDARD_FEATURES = ["type", "air_temperature", "process_temperature",
 # 재사용한 진단 snapshot이 이 시간보다 오래됐으면 stale로 표시한다(센서값 신선도).
 STALE_THRESHOLD_SECONDS = int(os.environ.get("CONTEXT_STALE_THRESHOLD_SECONDS", "3600"))
 
-# 최근 대화 요약 토큰 폭주 방지 캡(목표: 비용/지연).
-RECENT_SUMMARY_CHAR_BUDGET = int(os.environ.get("CONTEXT_RECENT_SUMMARY_CHAR_BUDGET", "2000"))
+# 최근 대화 윈도우 정책.
+# 기억 깊이는 '턴 수'로 예측 가능하게 제어하고(주), 글자 예산은 비정상적으로 긴 턴에 대한 백스톱(보조)이다.
+# 사용자 질문은 짧고 중요(의도 추적), assistant 답변은 길어 토큰을 많이 쓰므로 더 적게 유지한다.
+RECENT_USER_TURN_LIMIT = int(os.environ.get("CONTEXT_RECENT_USER_TURN_LIMIT", "8"))   # 주 제어: 유지할 최근 사용자 턴 수
+RECENT_SUMMARY_CHAR_BUDGET = int(os.environ.get("CONTEXT_RECENT_SUMMARY_CHAR_BUDGET", "3000"))  # 백스톱(8 user + 4 assistant 수용)
 PER_TURN_CHAR_CAP = int(os.environ.get("CONTEXT_PER_TURN_CHAR_CAP", "300"))
 
 FEATURE_ALIASES = {
@@ -68,4 +71,3 @@ def extract_machine_values(text: str) -> dict[str, float | str]:
 def detect_injection(text: str) -> bool:
     return any(re.search(p, text, re.IGNORECASE) for p in INJECTION_PATTERNS)
 
-print("context_policy 정의 완료")
