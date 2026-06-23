@@ -28,7 +28,8 @@ BLOCK_MESSAGES = {
 }
 
 FORBIDDEN_PATTERNS = [
-    r"점검\s*(없이|전에?|안\s*하고)\s*(재?가동|기동|운전)",
+    # 질문형("해도 되나?", "해도 됩니까?")은 LLM이 ANSWER_SAFELY로 분류. 지시형·요청형만 차단.
+    r"점검\s*(없이|전에?|안\s*하고)\s*(재?가동|기동|운전).{0,25}(해줘|해주세요|하라|하세요|시켜줘|시켜|강행|합시다|계속\s*해|그냥\s*(해|진행))",
     r"안전\s*장치\S*\s*(우회|해제|끄|꺼|무시).*(돌려|가동|운전|진행|해)",
     r"(경고|알람|위험)\s*\S*\s*무시.*(가동|운전|계속|진행)",
     r"(재가동|기동|가동)\s*\S*\s*(강행|밀어붙|그냥\s*(해|진행))",
@@ -48,9 +49,9 @@ INTAKE_SYS = (
     "safety_action 규칙:\n"
     "- ALLOW: 일반 제조 질문, 진단, 문서 검색, 이력 조회, 안전 자문.\n"
     "- ANSWER_SAFELY: 사용자가 가동 가능 여부/승인/정지 여부를 묻지만, 모델이 실제 조치나 승인을 대신하면 안 되는 경우.\n"
-    "- BLOCK_DANGEROUS_EXECUTION: 점검 없이 재가동, 안전장치 우회/해제, 경고·알람 무시 후 운전, 위험한 강행 운전을 요청하는 경우.\n"
+    "- BLOCK_DANGEROUS_EXECUTION: 점검 없이 재가동을 '해줘'·'해달라'·'강행해'처럼 위험 행동을 직접 실행해달라고 요청, 안전장치 우회/해제 실행 요청, 경고·알람 무시 운전 실행 요청.\n"
     "- HUMAN_HANDOFF: 실제 설비 제어, 현장 승인, 잠금/LOTO 해제 등 현장 책임자 확인이 필요한 직접 조치 요청.\n"
-    "중요: '정지해야 하나?', '점검 없이 재가동해도 되나?', '안전장치 우회가 왜 위험한가?' 같은 안전 자문은 차단하지 말고 ANSWER_SAFELY로 둔다.\n"
+    "중요: '정지해야 하나?', '점검 없이 재가동해도 되나?', '안전장치 우회가 왜 위험한가?'처럼 가능 여부나 이유를 묻는 안전 자문은 ANSWER_SAFELY로 둔다. BLOCK_DANGEROUS_EXECUTION은 위험 행동을 직접 '실행해달라'고 요청할 때만 쓰고, 질문에는 쓰지 않는다.\n"
     "반드시 JSON만 출력하라: "
     "{\"service_allowed\": true/false, \"input_reason\": \"none|empty|injection|gibberish|out_of_scope\", "
     "\"safety_action\": \"ALLOW|ANSWER_SAFELY|BLOCK_DANGEROUS_EXECUTION|HUMAN_HANDOFF\", "
