@@ -1,7 +1,7 @@
 from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
-from manufacturing_agent.agents.evidence_agent import SQL_TABLE_RE
+from manufacturing_agent.agents.sql_agent import SQL_TABLE_RE
 from manufacturing_agent.context.policy import detect_injection
 from manufacturing_agent.contracts.context import ContextPacket, DiagnosisContext, EvidenceArtifact, PredictionResult, SQLHistoryArtifact
 from manufacturing_agent.contracts.state import ManufacturingState
@@ -93,8 +93,11 @@ def memory_writer_node(state: ManufacturingState) -> dict:
         conversation_store.add_summary(user_id, "sql", _compact_sql_artifact_for_memory(sql), thread_id=thread_id, turn_id=turn_id)
 
     # 실행 이력 저장
+    rt = state.get("run_trace")
+    rt_events = getattr(rt, "events", None) or (rt.get("events") if isinstance(rt, dict) else [])
     run_store.save(state.get("request_id", "?"), user_id, thread_id,
                    {"gate_reports": state.get("gate_reports", []),
-                    "retry_counts": state.get("retry_counts", {})})
+                    "retry_counts": state.get("retry_counts", {}),
+                    "run_trace": [e for e in (rt_events or [])]})
     return {"messages": [AIMessage(content=fa.answer)]} if fa else {}
 print("memory_writer_node 정의 완료")

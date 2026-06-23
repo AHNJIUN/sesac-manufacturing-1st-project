@@ -536,18 +536,24 @@ def _final_answer_quality_feedback(ctx: dict, answer: str) -> list[str]:
     return issues
 
 _UNIT_NUM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(N·m|Nm|rpm|RPM|K|℃|분|건|%|mm|시간|회)")
+# 단위 없는 고위험 정량 주장만 좁게 잡는다: 배수(배)와 퍼센트포인트(%p/퍼센트포인트).
+# 표준 단위가 없어 _UNIT_NUM_RE로는 못 잡지만 "약 3배", "12%p"처럼 사실상 측정값 주장이다.
+_MULT_NUM_RE = re.compile(r"(\d+(?:\.\d+)?)\s*(배|%p|퍼센트포인트)")
 
 def _allowed_numbers(ctx: dict) -> set[str]:
-    """facts sheet에 등장한 모든 수치 토큰. LLM 본문 수치는 이 집합 안에 있어야 한다."""
+    """facts sheet의 '측정값' 키에 등장한 수치 토큰. LLM 본문 수치는 이 집합 안에 있어야 한다.
+    citations(예: [C1], [C2], 문서 제목·파일명 속 숫자)는 측정값이 아니라 인용 식별자/색인이므로,
+    그 숫자가 본문의 측정 수치(예: 5건)를 잘못 화이트리스트해 hallucination을 통과시키지 않도록 제외한다."""
     allowed: set[str] = set()
     for key in ("prediction_summary", "history_summary", "evidence_summary",
-                "safety_summary", "diagnosis_block", "checklist_block", "citations"):
+                "safety_summary", "diagnosis_block", "checklist_block"):
         allowed |= set(re.findall(r"\d+(?:\.\d+)?", ctx.get(key, "") or ""))
     return allowed
 
 def _number_guard(answer: str, allowed: set[str]) -> list[str]:
     """단위가 붙은 수치(토크/온도/건수/다운타임 등)가 facts sheet에 없으면 hallucination으로 본다.
-    단위 없는 일반 숫자·목록 번호는 오탐 위험이 커서 검사하지 않는다."""
+    단위 없는 일반 숫자·목록 번호는 오탐 위험이 커서 검사하지 않는다.
+    단, 배수(배)·퍼센트포인트(%p)는 단위가 없어도 명백한 정량 주장이라 별도로 검사한다."""
     issues: list[str] = []
     for m in _UNIT_NUM_RE.finditer(answer or ""):
         tok = m.group(1)
@@ -558,6 +564,14 @@ def _number_guard(answer: str, allowed: set[str]) -> list[str]:
         issues.append(f"number_hallucination:{m.group(0).strip()} → facts sheet에 없는 수치이니 제거하거나 facts 값으로 교체하세요.")
         if len(issues) >= 5:
             break
+    # 배수/%p는 한 자리 숫자(예: 3배)도 실제 주장이므로 목록 번호 예외를 적용하지 않는다.
+    for m in _MULT_NUM_RE.finditer(answer or ""):
+        if len(issues) >= 5:
+            break
+        tok = m.group(1)
+        if tok in allowed:
+            continue
+        issues.append(f"number_hallucination:{m.group(0).strip()} → facts sheet에 없는 수치이니 제거하거나 facts 값으로 교체하세요.")
     return issues
 
 # ---------- 후처리 ----------

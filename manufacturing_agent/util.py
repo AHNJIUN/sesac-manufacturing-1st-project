@@ -32,5 +32,16 @@ def _coerce_bool(value, default: bool = False) -> bool:
             return False
     return default
 
+GATE_REPORTS_MAX = int(os.environ.get("GATE_REPORTS_MAX", "60"))
+
+def append_gate_report(state, report) -> list:
+    """현재 gate_reports에 report를 append하되 한 턴 내 상한(GATE_REPORTS_MAX)을 둔다.
+    상한 초과 시 가장 오래된 항목부터 버려 최근 report를 유지한다(라우팅·디버깅은 최근 report에 의존)."""
+    reports = list(state.get("gate_reports", []) or [])
+    reports.append(report.model_dump() if hasattr(report, "model_dump") else report)
+    if len(reports) > GATE_REPORTS_MAX:
+        reports = reports[-GATE_REPORTS_MAX:]
+    return reports
+
 # import * 가 밑줄(_x) 이름까지 가져오도록 명시 export
 __all__ = [n for n in dir() if not n.startswith("__")]

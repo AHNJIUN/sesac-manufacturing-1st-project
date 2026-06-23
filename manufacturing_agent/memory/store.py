@@ -87,7 +87,7 @@ class ConversationStore:
                       (user_id, thread_id, role, content, self._now()))
 
     # 요약 본문 길이 상한(폭주 방지). sample_rows 등을 포함한 SQL 요약이 과도하게 길어지는 것을 막는다.
-    SUMMARY_CHAR_CAP = 4000
+    SUMMARY_CHAR_CAP = MEMORY_SUMMARY_CHAR_CAP
 
     def add_summary(self, user_id, kind, content, thread_id=None, turn_id=None):
         if not content:
@@ -125,9 +125,9 @@ class ConversationStore:
                        updated_at=excluded.updated_at""",
                 (user_id, thread_id, context.id, self._now()),
             )
-            self._prune_recent_contexts(c, user_id, thread_id, keep=5)
+            self._prune_recent_contexts(c, user_id, thread_id, keep=RECENT_CONTEXT_KEEP)
 
-    def _prune_recent_contexts(self, conn, user_id: str, thread_id: str, keep: int = 5) -> None:
+    def _prune_recent_contexts(self, conn, user_id: str, thread_id: str, keep: int = RECENT_CONTEXT_KEEP) -> None:
         rows = conn.execute(
             "SELECT id FROM diagnosis_contexts WHERE user_id=? AND thread_id=? ORDER BY created_at DESC, rowid DESC",
             (user_id, thread_id),
@@ -194,7 +194,7 @@ class ConversationStore:
             ).fetchone()
         return self._context_from_row(row) if row else None
 
-    def get_recent_contexts(self, user_id: str, thread_id: str, limit: int = 5) -> list[DiagnosisContext]:
+    def get_recent_contexts(self, user_id: str, thread_id: str, limit: int = RECENT_CONTEXT_KEEP) -> list[DiagnosisContext]:
         with self._conn() as c:
             rows = c.execute(
                 """SELECT * FROM diagnosis_contexts
