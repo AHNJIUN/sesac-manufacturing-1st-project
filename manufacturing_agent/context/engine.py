@@ -19,6 +19,7 @@ CONTEXT_DECISION_SYS = (
     "CURRENT_ONLY는 현재 사용자가 직접 말한 값만 쓴다. 이전 feature 자동 보완은 금지다. "
     "USE_ACTIVE는 '방금/아까/같은 조건/이전 입력값 기준'이라고 명시한 경우 active context 전체를 쓴다. "
     "PATCH_ACTIVE는 특정 값만 바꾸라고 명시한 경우 active context 하나에 현재 변경값만 덮어쓴다. "
+    "patch_values에는 절대값을 넣는다. '지금보다 5도 더', '두 배' 같은 상대 변경이면 base context의 해당 feature 값에 직접 계산해 절대값으로 넣어라(예: process_temperature 311 → '5도 더' → 316). "
     "SELECT_HISTORY는 recent_contexts 중 특정 과거 조건 하나를 지칭한 경우만 쓴다. 여러 context를 섞지 않는다. "
     "REFER_ACTIVE_RESULT는 재진단이 아니라 방금 결과/고장 유형/근거/이력만 참조하는 경우다.\n"
     "반드시 JSON만 출력하라: "
@@ -55,9 +56,27 @@ def _contexts_by_id(selected: dict) -> dict[str, DiagnosisContext]:
     return out
 
 
-def _filter_patch_values(values: dict, current_values: dict) -> dict[str, Any]:
-    allowed = set(current_values)
-    return {k: v for k, v in (values or {}).items() if k in allowed}
+# feature 언급 감지용 표현(라벨/별칭). 상대 변경처럼 절대값이 추출되지 않아도
+# 사용자가 '그 feature를 바꾸겠다'고 말했는지 판단하는 데 쓴다.
+_FEATURE_MENTION_TERMS = {
+    "tool_wear": ["공구마모", "공구 마모", "마모", "tool_wear", "tool wear"],
+    "torque": ["토크", "torque"],
+    "rotational_speed": ["회전속도", "회전 속도", "회전수", "rpm", "rotational_speed"],
+    "process_temperature": ["공정온도", "공정 온도", "process_temperature"],
+    "air_temperature": ["공기온도", "공기 온도", "대기온도", "air_temperature"],
+}
+
+
+def _features_mentioned(msg: str) -> set[str]:
+    """메시지에 이름/라벨로 언급된 feature 키 집합. ('온도'만으론 공정/공기 구분 불가하므로 한정어 필요)"""
+    text = (msg or "").lower()
+    return {key for key, terms in _FEATURE_MENTION_TERMS.items()
+            if any(t.lower() in text for t in terms)}
+
+
+def _filter_patch_values(values: dict, allowed_keys: set) -> dict[str, Any]:
+    """patch_values를 허용된 feature 키로만 제한한다(LLM의 키/값 환각 차단)."""
+    return {k: v for k, v in (values or {}).items() if k in allowed_keys}
 
 
 def _has_prior_context(selected: dict) -> bool:
@@ -150,7 +169,12 @@ def _finalize_decision(data: dict, selected: dict, user_message: str) -> Context
         warnings.append("재사용할 active 진단 context가 없어 현재 입력만 사용합니다.")
         mode = "CURRENT_ONLY"
 
-    patch_values = _filter_patch_values(data.get("patch_values") or {}, current_values)
+    # 허용 patch 키 = 이번 턴 추출값 + (사용자가 언급한 feature ∩ base feature).
+    # 상대 변경('공정 온도 5도 더')은 추출값이 없어도 '공정 온도' 언급으로 허용되어 LLM 절대값(316)이 통과한다.
+    # 언급 안 한 feature(예: tool_wear)는 LLM이 끼워 넣어도 차단된다.
+    base_keys = set(base.features or {}) if base else set()
+    allowed_patch_keys = set(current_values) | (_features_mentioned(user_message) & base_keys)
+    patch_values = _filter_patch_values(data.get("patch_values") or {}, allowed_patch_keys)
     if mode in {"PATCH_ACTIVE", "SELECT_HISTORY"} and current_values and not patch_values:
         patch_values = dict(current_values)
 
