@@ -21,6 +21,8 @@ from typing import Any
 
 # 기존 러너 모듈을 라이브러리로 재사용 (scripts/ 를 import 경로에 추가)
 sys.path.insert(0, str(Path(__file__).resolve().parent))
+# manufacturing_agent 패키지를 import하려면 프로젝트 루트도 경로에 있어야 한다(스크립트 직접 실행 대응).
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 import run_manufacturing_scenarios as base  # noqa: E402
 from run_manufacturing_scenarios import (  # noqa: E402
     Turn,
@@ -84,9 +86,137 @@ def _corrected_definition_cells() -> list[int]:
 
 
 def _load_runtime() -> dict[str, Any]:
-    """DEFINITION_CELLS를 보정한 뒤 기존 로더로 노트북 런타임을 구성한다."""
-    base.DEFINITION_CELLS = _corrected_definition_cells()
-    return base._load_notebook_runtime()
+    """패키지(manufacturing_agent)에서 직접 import해 런타임 g를 구성한다(패키지 = 단일 출처).
+    기존 노트북 exec 로더(_load_notebook_runtime)는 노트북-패키지 불일치를 유발하므로 더 이상 쓰지 않는다."""
+    from manufacturing_agent._common import MemorySaver
+    from manufacturing_agent.graph.build import build_graph, make_checkpoint_serde, make_sqlite_saver
+    from manufacturing_agent.graph.dispatcher import orchestrator_dispatcher
+    from manufacturing_agent.graph.replanner import supervisor_replanner_node
+    from manufacturing_agent.gates.quality_gates import output_safety_gate, _contains_unsafe_execution_instruction
+    from manufacturing_agent.agents.sql_agent import (
+        validate_sql_query, DEFAULT_SQL_DEPS, SQL_SCHEMA_GUIDE, SQLGeneratedQuery, SQLSuccess, sql_agent)
+    from manufacturing_agent.services.rag_service import rag_search
+    from manufacturing_agent.rag.chroma import vector_search
+    from manufacturing_agent.contracts.context import (
+        FinalAnswer, AgentContextPacket, ContextPacket, EvidenceArtifact, ExecutionPlan,
+        GateReport, SupervisorPlannerDecision, TaskSpec)
+    g: dict[str, Any] = {
+        "MemorySaver": MemorySaver, "build_graph": build_graph,
+        "make_checkpoint_serde": make_checkpoint_serde, "make_sqlite_saver": make_sqlite_saver,
+        "orchestrator_dispatcher": orchestrator_dispatcher,
+        "supervisor_replanner_node": supervisor_replanner_node,
+        "output_safety_gate": output_safety_gate,
+        "_contains_unsafe_execution_instruction": _contains_unsafe_execution_instruction,
+        "validate_sql_query": validate_sql_query, "DEFAULT_SQL_DEPS": DEFAULT_SQL_DEPS,
+        "SQL_SCHEMA_GUIDE": SQL_SCHEMA_GUIDE, "SQLGeneratedQuery": SQLGeneratedQuery,
+        "SQLSuccess": SQLSuccess, "sql_agent": sql_agent,
+        "rag_search": rag_search, "vector_search": vector_search,
+        "FinalAnswer": FinalAnswer, "AgentContextPacket": AgentContextPacket,
+        "ContextPacket": ContextPacket, "EvidenceArtifact": EvidenceArtifact,
+        "ExecutionPlan": ExecutionPlan, "GateReport": GateReport,
+        "SupervisorPlannerDecision": SupervisorPlannerDecision, "TaskSpec": TaskSpec,
+    }
+    # 테스트 fake 빌더(R7/R10)가 구 query_type을 써도 깨지지 않게 detail/aggregate로 매핑하는 shim.
+    _real_sgq = g["SQLGeneratedQuery"]
+    def _sgq_compat(**kw):
+        qt = kw.get("query_type")
+        if qt in _QUERY_TYPE_COMPAT:
+            kw = {**kw, "query_type": _QUERY_TYPE_COMPAT[qt]}
+        return _real_sgq(**kw)
+    g["SQLGeneratedQuery"] = _sgq_compat
+    g["app"] = build_graph(checkpointer=MemorySaver(serde=make_checkpoint_serde()))
+    return g
+
+
+# ---------------------------------------------------------------------------
+# 하네스 보정: 머지된 코드(SQL query_type=detail/aggregate)와 빈 artifacts dict에 맞춰
+# 재사용한 base 체크를 교정한다. 시나리오 '유형'은 유지하고 검증 로직만 고친다.
+# ---------------------------------------------------------------------------
+_QUERY_TYPE_COMPAT = {
+    "failure_history": "detail", "corrective_actions": "detail",
+    "similar_incidents": "detail", "repeated_patterns": "aggregate",
+}
+
+
+def _artifact_status_from_state(result: dict[str, Any], name: str) -> str | None:
+    """base 체크들이 비어 있는 result['artifacts']를 읽어 None을 보던 문제 → state 필드로 보정."""
+    key = {"prediction": "prediction_result", "evidence": "evidence_bundle", "sql": "sql_result"}.get(name, name)
+    return getattr(result.get(key), "status", None)
+
+
+# base 모듈 전역을 교체 → 재사용한 base 체크(_check_combined/_check_multiturn_*/broad_lookup)가 state를 읽게 된다.
+base._artifact_status = _artifact_status_from_state
+
+
+def _check_failure_history_actions(results: list[dict[str, Any]], g: dict[str, Any]) -> CheckResult:
+    """S5/S7/S10: 이력 조회 체크의 query_type 어휘를 detail/aggregate로 교정."""
+    r = results[-1]
+    failures: CheckResult = []
+    _check_sql_ok(r, g, failures)
+    sql = r.get("sql_result")
+    qtypes = {getattr(x, "query_type", None) for x in (getattr(sql, "results", None) or [])}
+    _require(bool(qtypes & {"detail", "aggregate"}), f"SQL query_type(detail/aggregate) 없음: {qtypes}", failures)
+    _require("prediction" not in _task_types(r), "이력 조회 전용인데 prediction task가 생성됨", failures)
+    _require("고장" in _answer(r) or "이력" in _answer(r) or "대응" in _answer(r), "답변에 고장 이력/대응 요약 없음", failures)
+    _check_answer_quality(r, failures, mode="sql_only")
+    return failures
+
+
+def _check_text_to_sql_and_rag_quality(results: list[dict[str, Any]], g: dict[str, Any]) -> CheckResult:
+    """R7: Text-to-SQL/RAG 품질·안전 체크를 detail/aggregate 어휘로 재작성."""
+    failures: CheckResult = []
+
+    def gen(query_type: str, sql_query: str):
+        return g["SQLGeneratedQuery"](query_type=query_type, purpose=f"{query_type} regression",
+                                      sql_query=sql_query, explanation="fake runner")
+
+    def sql_state(task_id: str, message: str, qts: list[str]) -> dict[str, Any]:
+        task = g["TaskSpec"](task_id=task_id, task_type="sql", params={"query_types": qts, "default_time_window_days": 30})
+        return {"user_message": message, "context_packet": g["ContextPacket"](current_question=message),
+                "agent_contexts": {"sql_agent": g["AgentContextPacket"](agent_name="sql_agent", current_question=message, prior_results={})},
+                "execution_plan": g["ExecutionPlan"](intent="history_lookup", tasks=[task]),
+                "active_task_id": task_id, "artifacts": {}}
+
+    def runner(resp):
+        def _r(*a, **k):
+            return resp
+        return _r
+
+    def invoke(state, r):
+        return g["sql_agent"](state, config={"configurable": {"text_to_sql_runner": r}})
+
+    ok_resp = g["SQLSuccess"](queries=[
+        gen("detail", "SELECT id, event_date, failure_type, severity, component, symptom, root_cause, corrective_action, preventive_action, downtime_min FROM failure_history WHERE event_date >= '2026-05-22' ORDER BY event_date DESC LIMIT 50"),
+        gen("aggregate", "SELECT failure_type, component, COUNT(*) AS case_count, SUM(downtime_min) AS total_downtime_min FROM failure_history WHERE event_date >= '2026-05-22' GROUP BY failure_type, component ORDER BY case_count DESC LIMIT 50"),
+    ], reason_summary="ok")
+    out = invoke(sql_state("v2_tts_ok", "최근 30일 고장 이력과 반복 패턴", ["detail", "aggregate"]), runner(ok_resp))
+    statuses = {x.query_type: x.status for x in getattr(out.get("sql_result"), "results", [])}
+    _require(statuses.get("detail") == "OK", f"detail status 이상: {statuses}", failures)
+    _require(statuses.get("aggregate") == "OK", f"aggregate status 이상: {statuses}", failures)
+
+    for name, q in [
+        ("delete", "DELETE FROM failure_history WHERE id = 1 LIMIT 1"),
+        ("missing_limit", "SELECT id, event_date, failure_type FROM failure_history ORDER BY event_date DESC"),
+        ("bad_column", "SELECT incident_id, event_date FROM failure_history LIMIT 50"),
+        ("bad_table", "SELECT id FROM alarm_logs LIMIT 50"),
+    ]:
+        uout = invoke(sql_state(f"v2_tts_{name}", f"{name} 회귀", ["detail"]),
+                      runner(g["SQLSuccess"](queries=[gen("detail", q)], reason_summary="x")))
+        ur = uout.get("sql_result")
+        st = {x.query_type: x.status for x in getattr(ur, "results", [])}
+        status = st.get("detail") or getattr(ur, "status", None)
+        _require(status in {"BLOCKED", "FAIL"}, f"{name} SQL이 BLOCKED/FAIL이 아님: {st} / {getattr(ur, 'status', None)}", failures)
+
+    orig = g["vector_search"]
+    try:
+        g["vector_search"] = lambda *a, **k: [{"id": "low", "text": "관련성 낮음", "type": "manual",
+                                               "source": "haas/low.md", "chunk_index": 3, "score": -0.99}]
+        low = g["rag_search"]("공구 마모 점검 절차", profile="troubleshooting_rag", retrieve_k=1)
+    finally:
+        g["vector_search"] = orig
+    _require(low.get("status") == "LOW_RELEVANCE", f"낮은 score가 LOW_RELEVANCE 아님: {low.get('status')}", failures)
+    _require(all("source" in c and "chunk_index" in c for c in low.get("citations", [])), "citation metadata 부족", failures)
+    return failures
 
 
 # ---------------------------------------------------------------------------
@@ -176,7 +306,7 @@ def _check_similar_incidents(results: list[dict[str, Any]], g: dict[str, Any]) -
     _check_sql_ok(r, g, failures)
     sql = r.get("sql_result")
     qtypes = {getattr(x, "query_type", None) for x in (getattr(sql, "results", None) or [])}
-    _require("similar_incidents" in qtypes, f"similar_incidents query_type 없음: {qtypes}", failures)
+    _require("detail" in qtypes, f"유사 사례 조회 query_type(detail) 없음: {qtypes}", failures)
     joined = "\n".join(_sql_texts(sql))
     for term in ["tool_wear", "torque", "rotational_speed", "process_temperature", "air_temperature"]:
         _require(term not in joined, f"유사 사례 SQL에 입력 피처 조건이 직접 사용됨: {term} | {joined}", failures)
@@ -296,6 +426,14 @@ def scenarios() -> list[Scenario]:
 # CLI (기존 러너의 실행기/요약기를 재사용)
 # ---------------------------------------------------------------------------
 def main() -> int:
+    # cp949(한국어 Windows 콘솔)에서 답변의 이모지/특수문자(🔴 · ℃ ⚠ …) 출력 시 UnicodeEncodeError로
+    # 런이 죽는 것을 막는다(에이전트 문제 아님, 콘솔 인코딩 문제).
+    for _stream in (sys.stdout, sys.stderr):
+        try:
+            _stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
+
     parser = argparse.ArgumentParser(description="Run manufacturing agent scenario tests (v2: A~D + R track).")
     parser.add_argument("--scenario", action="append", help="특정 시나리오 id만 실행(반복 지정 가능).")
     parser.add_argument("--group", action="append", help="그룹 태그(A/B/C/D/R)만 실행.")
