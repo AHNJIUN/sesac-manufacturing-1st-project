@@ -77,6 +77,36 @@ def _stream_gen(user_id: str, thread_id: str, message: str, input_features, debu
             yield _sse({"type": "error", "code": "internal", "message": str(exc)[:300]})
 
 
+def _sql_payload(sql_result) -> "dict | None":
+    """SQL 에이전트가 조회한 failure_history 행을 프론트 카드용으로 평탄화한다.
+    SQL을 쓰지 않은 턴이면 None을 반환한다(프론트는 None이면 DB 카드 섹션을 안 그린다)."""
+    if sql_result is None:
+        return None
+    rows = []
+    for r in (getattr(sql_result, "results", []) or []):
+        rows.extend(getattr(r, "rows", None) or [])
+    if not rows:
+        rows = list(getattr(sql_result, "rows", None) or [])
+    return {
+        "status": getattr(sql_result, "status", None),
+        "row_count": len(rows),
+        "rows": rows[:30],
+        "summary": (getattr(sql_result, "summary", "") or "")[:500],
+    }
+
+
+def _evidence_payload(ev) -> "dict | None":
+    """evidence(RAG) 에이전트 레벨 메타. 문서별 근거(title/source/snippet)는 top-level citations에 있다."""
+    if ev is None:
+        return None
+    return {
+        "status": getattr(ev, "status", None),
+        "summary": (getattr(ev, "evidence_summary", "") or "")[:1000],
+        "doc_count": len(getattr(ev, "documents", None) or []),
+        "citation_count": len(getattr(ev, "citations", None) or []),
+    }
+
+
 def _build_response(user_id: str, thread_id: str, result: dict, debug: bool) -> ChatResponse:
     """Map a runtime result dict to a ChatResponse, defensively handling None."""
     result = result or {}
@@ -115,6 +145,8 @@ def _build_response(user_id: str, thread_id: str, result: dict, debug: bool) -> 
         warnings=warnings,
         missing_inputs=missing_inputs,
         blocked=blocked,
+        sql=_sql_payload(result.get("sql_result")),
+        evidence=_evidence_payload(result.get("evidence_bundle")),
         trace=trace,
     )
 
