@@ -78,3 +78,9 @@ def vector_search(query: str, k: int = 3, type_filter: Optional[str] = None) -> 
     return out
 
 
+# ---------- 벡터 백엔드 분기 ----------
+# .env의 VECTOR_BACKEND 값에 따라 pinecone_store의 vector_search로 교체한다.
+# rag_service.py는 이 모듈에서 vector_search를 import하므로 변경 불필요.
+_VECTOR_BACKEND = os.environ.get("VECTOR_BACKEND", "chroma").lower()
+if _VECTOR_BACKEND == "pinecone":
+    from manufacturing_agent.rag.pinecone_store import vector_search  # noqa: F811
