@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.agents.sql_agent import SQL_TABLE_RE
@@ -100,4 +100,3 @@ def memory_writer_node(state: ManufacturingState) -> dict:
                     "retry_counts": state.get("retry_counts", {}),
                     "run_trace": [e for e in (rt_events or [])]})
     return {"messages": [AIMessage(content=fa.answer)]} if fa else {}
-print("memory_writer_node 정의 완료")

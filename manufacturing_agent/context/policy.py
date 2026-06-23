@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 
@@ -68,4 +68,3 @@ def extract_machine_values(text: str) -> dict[str, float | str]:
 def detect_injection(text: str) -> bool:
     return any(re.search(p, text, re.IGNORECASE) for p in INJECTION_PATTERNS)
 
-print("context_policy 정의 완료")

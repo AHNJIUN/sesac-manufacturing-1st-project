@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import PredictionResult
@@ -110,4 +110,3 @@ def prediction_agent(state: ManufacturingState) -> dict:
     )
     result.summary = build_prediction_summary(result)
     return {"prediction_result": result}
-print("prediction_agent(rule-based diagnostic) 정의 완료")
