@@ -2,19 +2,23 @@
 
 순수 테스트(taxonomy alias/fan-out/routing)는 의존성 없이 항상 실행된다.
 retrieval/no-evidence/citation 테스트는 rag_service 임포트가 필요하며,
-vector_search를 monkeypatch해 OpenAI 호출 없이 결정적으로 동작한다.
-(rag_service 임포트는 chroma 컬렉션 + OPENAI_API_KEY가 있어야 하므로 없으면 skip)
+vector_search를 monkeypatch해 **벡터 백엔드(Pinecone/Chroma) 무관**·OpenAI 호출 없이 결정적으로 동작한다.
+(rag_service 임포트에는 openai/pinecone 패키지만 필요. 실제 Pinecone 연결/색인은 monkeypatch로 대체)
+
+실제 Pinecone 연결 smoke 테스트는 RUN_PINECONE_LIVE=1 + PINECONE_API_KEY가 있을 때만 실행된다.
 
 Run:
     uv run python -m pytest tests/test_rag_taxonomy.py -q
 """
 from __future__ import annotations
 
+import os
+
 import pytest
 
 from manufacturing_agent.services import manufacturing_taxonomy as tax
 
-# rag_service는 chroma(임베딩 함수 구성)에 의존 -> 불가하면 관련 테스트 skip
+# rag_service 임포트 가능 여부 (vector_search 백엔드 = pinecone_store). 불가하면 관련 테스트 skip
 try:
     from manufacturing_agent.services import rag_service as rs
     from manufacturing_agent.contracts.context import PredictionResult
@@ -23,7 +27,19 @@ except Exception as exc:  # pragma: no cover
     _RS_OK = False
     _RS_ERR = str(exc)
 
-needs_rs = pytest.mark.skipif(not _RS_OK, reason="rag_service/chroma 임포트 불가(OPENAI_API_KEY/chroma 필요)")
+needs_rs = pytest.mark.skipif(not _RS_OK, reason="rag_service 임포트 불가(openai/pinecone 패키지 필요)")
+
+# 실제 Pinecone 연결이 필요한 통합 테스트용 가드.
+# 일반 pytest 실행에서 우발적으로 돌지 않도록 명시적 opt-in(RUN_PINECONE_LIVE=1)을 요구한다.
+# (실행 전 PINECONE_API_KEY + 실제 OPENAI_API_KEY + scripts/reembed_pinecone.py 색인 업서트 필요)
+_PINECONE_LIVE = (
+    os.environ.get("RUN_PINECONE_LIVE", "").lower() in {"1", "true", "yes", "on"}
+    and bool(os.environ.get("PINECONE_API_KEY"))
+)
+needs_pinecone = pytest.mark.skipif(
+    not (_RS_OK and _PINECONE_LIVE),
+    reason="실제 Pinecone 연결 필요(RUN_PINECONE_LIVE=1 + PINECONE_API_KEY + 색인 업서트)",
+)
 
 
 # ─────────────────────────────────────────────────────────────────
@@ -127,6 +143,7 @@ def test_build_query_extracts_korean_symptom():
 # 5. retrieval smoke test (vector_search monkeypatch -> 결정적)
 # ─────────────────────────────────────────────────────────────────
 def _hit(hid, source, chunk, score, text="spindle overheating troubleshooting"):
+    # pinecone_store.vector_search() / chroma.vector_search() 와 동일한 반환 dict 형태
     return {"id": hid, "text": text, "type": "troubleshooting",
             "source": source, "chunk_index": chunk, "score": score}
 
@@ -212,3 +229,31 @@ def test_final_answer_renders_citation_markers():
     ])
     assert "[출처]" in block
     assert "[C1]" in block
+
+
+# ─────────────────────────────────────────────────────────────────
+# 8. 실제 Pinecone 연결 smoke (RUN_PINECONE_LIVE=1 + PINECONE_API_KEY + 색인 업서트 필요)
+#    조건 미충족 시 자동 skip. `scripts/reembed_pinecone.py` 로 색인을 채운 뒤,
+#    RUN_PINECONE_LIVE=1 로 실행한다. 예) RUN_PINECONE_LIVE=1 uv run python -m pytest tests/test_rag_taxonomy.py -k live
+# ─────────────────────────────────────────────────────────────────
+@needs_pinecone
+def test_pinecone_vector_search_live():
+    """실제 Pinecone 색인에서 on-topic 질의가 haas 문서를 score와 함께 반환한다."""
+    from manufacturing_agent.rag import pinecone_store
+
+    hits = pinecone_store.vector_search("spindle overheating troubleshooting", k=5)
+    assert hits, "Pinecone에서 결과가 비었습니다(색인 업서트 여부 확인: scripts/reembed_pinecone.py)"
+    h0 = hits[0]
+    # chroma.vector_search 와 동일한 반환 스키마
+    assert set(h0) >= {"id", "text", "source", "chunk_index", "score"}
+    assert isinstance(h0["score"], float)
+
+
+@needs_pinecone
+def test_pinecone_rag_search_live_on_topic():
+    """rag_search(실 Pinecone)가 on-topic 질의에 OK + citation을 반환한다."""
+    res = rs.rag_search("스핀들 과열 원인", "troubleshooting_rag", None, retrieve_k=16, top_k=4)
+    assert res["status"] in {"OK", "NO_EVIDENCE"}  # 색인 상태에 따라
+    if res["status"] == "OK":
+        assert res["citations"]
+        assert all(0.0 <= c["score"] <= 1.0 for c in res["citations"])

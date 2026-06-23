@@ -62,7 +62,7 @@ import os, sys, time, uuid
 from pathlib import Path
 
 # 이 노트북은 scripts/ 에 있다. 어디서 열든 작업 디렉터리를 저장소 루트로 고정해야
-# 메인 노트북의 상대경로(agent_data/...: DB·chroma)가 깨지지 않는다.
+# 메인 노트북의 상대경로(agent_data/...: SQLite DB 등)가 깨지지 않는다.
 ROOT = Path.cwd()
 while not (ROOT / "pyproject.toml").exists() and ROOT != ROOT.parent:
     ROOT = ROOT.parent
