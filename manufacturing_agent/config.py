@@ -61,6 +61,16 @@ LONGTERM_DB = os.path.join(DATA_DIR, "longterm_memory.sqlite")   # 장기 메모
 CHECKPOINT_DB = os.path.join(DATA_DIR, "checkpoints.sqlite")     # 장기 체크포인터(SqliteSaver)
 CHROMA_DIR = os.path.join(DATA_DIR, "chroma")                    # 벡터 스토어
 
+# 오케스트레이션/검색 튜닝 노브 (.env로 override 가능)
+RECURSION_LIMIT      = int(os.environ.get("RECURSION_LIMIT", "50"))      # LangGraph 실행 스텝 상한
+TASK_MAX_RETRIES     = int(os.environ.get("TASK_MAX_RETRIES", "2"))      # worker gate RETRYABLE_FAIL 재시도 예산
+TASK_MAX_RERUNS      = int(os.environ.get("TASK_MAX_RERUNS", "2"))       # targeted replan rerun 예산
+RAG_K_SAFETY         = int(os.environ.get("RAG_K_SAFETY", "20"))         # safety_procedure_rag 검색 문서 수
+RAG_K_DEFAULT        = int(os.environ.get("RAG_K_DEFAULT", "16"))        # 기본 RAG 검색 문서 수
+RAG_K_FALLBACK       = int(os.environ.get("RAG_K_FALLBACK", "8"))        # gate feedback 후 보완검색 문서 수
+RECENT_CONTEXT_KEEP  = int(os.environ.get("RECENT_CONTEXT_KEEP", "5"))   # thread별 보관하는 DiagnosisContext 수
+MEMORY_SUMMARY_CHAR_CAP = int(os.environ.get("SUMMARY_CHAR_CAP", "4000"))  # 장기메모리 요약 본문 길이 상한
+
 _HAS_KEY = bool(os.environ.get("OPENAI_API_KEY"))
 print(".env file:", "OK" if _ENV_EXISTS else "MISSING")
 print(".env loaded:", "OK" if _ENV_LOADED else "SKIPPED")

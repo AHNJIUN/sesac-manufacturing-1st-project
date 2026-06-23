@@ -284,9 +284,9 @@ class TaskSpec(BaseModel):
     ] = "PENDING"
     depends_on: list[str] = Field(default_factory=list)
     retry_count: int = 0
-    max_retries: int = 2
+    max_retries: int = TASK_MAX_RETRIES
     rerun_count: int = 0
-    max_reruns: int = 2
+    max_reruns: int = TASK_MAX_RERUNS
     reason: str = ""
     params: dict = Field(default_factory=dict)
     success_criteria: dict = Field(default_factory=dict)
@@ -341,5 +341,10 @@ class GateReport(BaseModel):
     reason: str = ""
     feedback: Optional[str] = None
     diagnostics: dict = Field(default_factory=dict)
+
+class RunTrace(BaseModel):
+    """한 턴의 노드 실행 이벤트 타임라인(관측용)."""
+    request_id: str = ""
+    events: list[dict] = Field(default_factory=list)
 
 print("contracts 정의 완료 (SupervisorPlan Orchestrator + typed artifacts)")

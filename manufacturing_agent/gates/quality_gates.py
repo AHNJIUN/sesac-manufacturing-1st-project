@@ -1,11 +1,12 @@
 from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
-from manufacturing_agent.agents.evidence_agent import DEFAULT_SQL_DEPS, get_active_task, get_active_task_criteria, get_active_task_params, validate_sql_query
+from manufacturing_agent.agents.evidence_agent import get_active_task, get_active_task_criteria, get_active_task_params
+from manufacturing_agent.agents.sql_agent import DEFAULT_SQL_DEPS, validate_sql_query
 from manufacturing_agent.contracts.context import FinalAnswer, GateReport, OutputSafetyDecision
 from manufacturing_agent.contracts.state import ManufacturingState
 from manufacturing_agent.gates.intake_gate import SAFETY_BLOCK_MESSAGE
-from manufacturing_agent.util import _coerce_bool, _json_object
+from manufacturing_agent.util import _coerce_bool, _json_object, append_gate_report
 
 # ---------- gates/prediction_gate.py ----------
 def _active_task_id(state: ManufacturingState, task_type: str) -> Optional[str]:
@@ -34,7 +35,7 @@ def prediction_gate(state: ManufacturingState) -> dict:
     report = GateReport(task_id=task_id, gate_name="prediction_gate", status=status, route_hint=hint,
                         reason=reason, feedback="입력 feature와 부분 위험 진단 결과를 재확인하세요." if status == "RETRYABLE_FAIL" else None,
                         diagnostics={"missing": getattr(pred, "missing_features", []) if pred else []})
-    return {"gate_reports": state.get("gate_reports", []) + [report.model_dump()]}
+    return {"gate_reports": append_gate_report(state, report)}
 
 # ---------- gates/evidence_gate.py ----------
 def evidence_gate(state: ManufacturingState) -> dict:
@@ -76,7 +77,7 @@ def evidence_gate(state: ManufacturingState) -> dict:
                         diagnostics={"docs": len(ev.documents) if ev else 0, "citations": len(ev.citations or []) if ev else 0,
                                      "required": required, "min_docs": min_docs, "require_citation": require_citation,
                                      "is_retry": getattr(ev, "is_retry", False) if ev else False})
-    return {"gate_reports": state.get("gate_reports", []) + [report.model_dump()]}
+    return {"gate_reports": append_gate_report(state, report)}
 
 # ---------- gates/sql_gate.py ----------
 def sql_gate(state: ManufacturingState) -> dict:
@@ -131,7 +132,7 @@ def sql_gate(state: ManufacturingState) -> dict:
     report = GateReport(task_id=task_id, gate_name="sql_gate", status=status, route_hint=hint,
                         reason=reason, feedback="failure_history schema, allowed columns, SELECT-only, LIMIT, date filter를 맞춰 SQL을 다시 생성하세요." if status in {"RETRYABLE_FAIL", "PLAN_REPAIR_REQUIRED"} else None,
                         diagnostics=diagnostics)
-    return {"gate_reports": state.get("gate_reports", []) + [report.model_dump()]}
+    return {"gate_reports": append_gate_report(state, report)}
 
 # ---------- gates/output_safety_gate.py ----------
 OUTPUT_SAFETY_SYS = (
@@ -236,7 +237,7 @@ def output_safety_gate(state: ManufacturingState) -> dict:
         reason=decision.reason,
         diagnostics=decision.model_dump(),
     )
-    updates["gate_reports"] = state.get("gate_reports", []) + [report.model_dump()]
+    updates["gate_reports"] = append_gate_report(state, report)
     return updates
 
 print("gates 정의 완료 (prediction/evidence/sql/output_safety)")
