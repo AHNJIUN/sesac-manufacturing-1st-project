@@ -21,7 +21,7 @@ class ConversationStore:
                 user_id TEXT, thread_id TEXT, name TEXT, value TEXT, unit TEXT, created_at TEXT);
             CREATE TABLE IF NOT EXISTS summaries(
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id TEXT, thread_id TEXT, kind TEXT, content TEXT, created_at TEXT);
+                user_id TEXT, thread_id TEXT, kind TEXT, content TEXT, created_at TEXT, turn_id TEXT);
             CREATE TABLE IF NOT EXISTS diagnosis_contexts(
                 id TEXT PRIMARY KEY,
                 user_id TEXT NOT NULL,
@@ -42,6 +42,7 @@ class ConversationStore:
             self._ensure_column(c, "turns", "thread_id", "TEXT")
             self._ensure_column(c, "machine_values", "thread_id", "TEXT")
             self._ensure_column(c, "summaries", "thread_id", "TEXT")
+            self._ensure_column(c, "summaries", "turn_id", "TEXT")
 
     @contextmanager
     def _conn(self):
@@ -99,12 +100,18 @@ class ConversationStore:
                 c.execute("INSERT INTO machine_values(user_id,thread_id,name,value,unit,created_at) VALUES(?,?,?,?,?,?)",
                           (user_id, thread_id, name, str(val), unit, self._now()))
 
-    def add_summary(self, user_id, kind, content, thread_id=None):
+    # 요약 본문 길이 상한(폭주 방지). sample_rows 등을 포함한 SQL 요약이 과도하게 길어지는 것을 막는다.
+    SUMMARY_CHAR_CAP = 4000
+
+    def add_summary(self, user_id, kind, content, thread_id=None, turn_id=None):
         if not content:
             return
+        content = str(content)
+        if len(content) > self.SUMMARY_CHAR_CAP:
+            content = content[: self.SUMMARY_CHAR_CAP].rstrip() + " …(truncated)"
         with self._conn() as c:
-            c.execute("INSERT INTO summaries(user_id,thread_id,kind,content,created_at) VALUES(?,?,?,?,?)",
-                      (user_id, thread_id, kind, content, self._now()))
+            c.execute("INSERT INTO summaries(user_id,thread_id,kind,content,created_at,turn_id) VALUES(?,?,?,?,?,?)",
+                      (user_id, thread_id, kind, content, self._now(), turn_id))
 
     def save_diagnosis_context(self, user_id: str, thread_id: str, context: DiagnosisContext) -> None:
         with self._conn() as c:
@@ -197,6 +204,22 @@ class ConversationStore:
                 row = c.execute(
                     "SELECT content FROM summaries WHERE user_id=? AND kind=? ORDER BY id DESC LIMIT 1",
                     (user_id, kind)).fetchone()
+        return row["content"] if row else None
+
+    def summary_by_turn(self, user_id, kind, turn_id, thread_id=None) -> Optional[str]:
+        """특정 과거 턴(turn_id=request_id)의 artifact 요약을 조회한다.
+        latest_summary의 '최신 1건만' 한계를 보완해, 후속질문이 특정 과거 결과를 지칭할 때 사용한다."""
+        if not turn_id:
+            return None
+        with self._conn() as c:
+            if thread_id:
+                row = c.execute(
+                    "SELECT content FROM summaries WHERE user_id=? AND thread_id=? AND kind=? AND turn_id=? ORDER BY id DESC LIMIT 1",
+                    (user_id, thread_id, kind, turn_id)).fetchone()
+            else:
+                row = c.execute(
+                    "SELECT content FROM summaries WHERE user_id=? AND kind=? AND turn_id=? ORDER BY id DESC LIMIT 1",
+                    (user_id, kind, turn_id)).fetchone()
         return row["content"] if row else None
 
     def get_active_context(self, user_id: str, thread_id: str) -> DiagnosisContext | None:

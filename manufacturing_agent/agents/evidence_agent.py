@@ -1,6 +1,7 @@
 from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
+from manufacturing_agent.context.packer import build_context_summary
 from manufacturing_agent.contracts.context import ContextPacket, EvidenceArtifact, ExecutionPlan, PredictionResult, SQLHistoryArtifact, SQLIntentDecision, SQLQueryResult, TaskSpec
 from manufacturing_agent.contracts.state import ManufacturingState
 from manufacturing_agent.services.rag_service import build_citation_aware_docs, rag_search
@@ -85,21 +86,11 @@ def evidence_agent(state: ManufacturingState) -> dict:
         bundle = EvidenceArtifact(
             status="EMPTY",
             retrieval_profile=rag_plan["profile"],
-            user_query=rag_plan["user_query"],
             queries=[rag_plan["search_query"]],
             documents=[],
             citations=[],
             evidence_summary="관련 문서 근거를 찾지 못했습니다.",
             limitations=rag_limitations or ["검색된 문서가 없어 근거 기반 단정은 제한됩니다."],
-            mode=rag_plan["mode"],
-            search_query=rag_plan["search_query"],
-            tags=rag_plan["tags"],
-            doc_whitelist=rag_plan["doc_whitelist"],
-            failure_types=rag_plan["failure_types"],
-            failure_ko=rag_plan["failure_ko"],
-            is_prediction_based=(rag_plan["mode"] == "B"),
-            supervisor_intent=getattr(plan, "intent", None),
-            feedback=feedback,
             is_retry=bool(feedback),
         )
         return {"evidence_bundle": bundle}
@@ -108,21 +99,11 @@ def evidence_agent(state: ManufacturingState) -> dict:
         bundle = EvidenceArtifact(
             status="LOW_RELEVANCE",
             retrieval_profile=rag_plan["profile"],
-            user_query=rag_plan["user_query"],
             queries=[rag_plan["search_query"]],
             documents=docs,
             citations=citations,
             evidence_summary="검색된 문서의 관련성이 낮아 근거 기반 단정은 제한됩니다.",
             limitations=rag_limitations or ["검색된 문서의 관련성이 낮습니다."],
-            mode=rag_plan["mode"],
-            search_query=rag_plan["search_query"],
-            tags=rag_plan["tags"],
-            doc_whitelist=rag_plan["doc_whitelist"],
-            failure_types=rag_plan["failure_types"],
-            failure_ko=rag_plan["failure_ko"],
-            is_prediction_based=(rag_plan["mode"] == "B"),
-            supervisor_intent=getattr(plan, "intent", None),
-            feedback=feedback,
             is_retry=bool(feedback),
         )
         return {"evidence_bundle": bundle}
@@ -151,42 +132,22 @@ def evidence_agent(state: ManufacturingState) -> dict:
         bundle = EvidenceArtifact(
             status="FAIL",
             retrieval_profile=rag_plan["profile"],
-            user_query=rag_plan["user_query"],
             queries=[rag_plan["search_query"]],
             documents=docs,
             citations=citations,
             evidence_summary="문서 근거 요약 생성에 실패했습니다.",
             limitations=rag_limitations + [f"evidence_summary_error: {type(e).__name__}"],
-            mode=rag_plan["mode"],
-            search_query=rag_plan["search_query"],
-            tags=rag_plan["tags"],
-            doc_whitelist=rag_plan["doc_whitelist"],
-            failure_types=rag_plan["failure_types"],
-            failure_ko=rag_plan["failure_ko"],
-            is_prediction_based=(rag_plan["mode"] == "B"),
-            supervisor_intent=getattr(plan, "intent", None),
-            feedback=feedback,
             is_retry=bool(feedback),
         )
         return {"evidence_bundle": bundle}
     bundle = EvidenceArtifact(
         status=status,
         retrieval_profile=rag_plan["profile"],
-        user_query=rag_plan["user_query"],
         queries=[rag_plan["search_query"]],
         documents=docs,
         citations=citations,
         evidence_summary=summary,
         limitations=rag_limitations,
-        mode=rag_plan["mode"],
-        search_query=rag_plan["search_query"],
-        tags=rag_plan["tags"],
-        doc_whitelist=rag_plan["doc_whitelist"],
-        failure_types=rag_plan["failure_types"],
-        failure_ko=rag_plan["failure_ko"],
-        is_prediction_based=(rag_plan["mode"] == "B"),
-        supervisor_intent=getattr(plan, "intent", None),
-        feedback=feedback,
         is_retry=bool(feedback),
     )
     return {"evidence_bundle": bundle}
@@ -637,25 +598,12 @@ def _sanitize_time_range(tr: Any, reference_date: str, default_days: int) -> Any
             "note": f"reference_date 기준 최근 {default_days}일"}
 
 def _build_sql_context_summary(packet: Optional[ContextPacket], state: ManufacturingState) -> str:
+    """멀티턴 맥락 요약은 공용 build_context_summary로 일원화하고(LangGraph/PydanticAI 두 채널 일치),
+    SQL 실행 전용 항목(time_range sanitize, reference_date)만 여기서 덧붙인다."""
     if not packet:
         return ""
-    blocks = []
-    carry = packet.context_carryover
-    blocks.append("현재 SQL DB는 failure_history 단일 테이블이다. 설비/자산 식별자 조건은 사용하지 않는다.")
-    if packet.recent_turns_summary:
-        blocks.append(f"참고용 최근 대화(thread context): {packet.recent_turns_summary}")
-    if packet.previous_sql_summary:
-        label = "현재 질문이 참조한 이전 SQL 이력 artifact" if (carry and carry.uses_previous_sql) else "참고용 이전 SQL 이력 artifact"
-        blocks.append(f"{label}: {packet.previous_sql_summary}")
-    if packet.previous_evidence_summary:
-        label = "현재 질문이 참조한 이전 문서 근거 artifact" if (carry and carry.uses_previous_evidence) else "참고용 이전 문서 근거 artifact"
-        blocks.append(f"{label}: {packet.previous_evidence_summary}")
-    if packet.previous_prediction_summary:
-        label = "현재 질문이 참조한 이전 위험 진단 artifact" if (carry and carry.uses_previous_prediction) else "참고용 이전 위험 진단 artifact"
-        blocks.append(f"{label}: {packet.previous_prediction_summary}")
-    if state.get("prediction_result"):
-        pred = state.get("prediction_result")
-        blocks.append(f"현재 prediction failure_types: {getattr(pred, 'failure_types', [])}; cause_features: {getattr(pred, 'cause_features', [])}")
+    summary = build_context_summary(packet, for_sql=True, prediction_result=state.get("prediction_result"))
+    blocks = [summary] if summary else []
     if packet.user_constraints:
         constraints = dict(packet.user_constraints)
         if constraints.get("time_range"):
@@ -684,7 +632,6 @@ def sql_agent(state: ManufacturingState, config: RunnableConfig = None) -> dict:
         failure_type=task_params.get("failure_type"),
         time_range=task_params.get("time_range"),
         filters=task_params.get("filters") or {},
-        requires_clarification=False,
         reason_summary="SupervisorPlanner task params passed to FailureHistory Text-to-SQL",
     )
     text_deps = _text_to_sql_deps_from_agent_deps(deps, planned_query_types)

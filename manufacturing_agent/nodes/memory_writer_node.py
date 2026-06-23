@@ -65,9 +65,11 @@ def memory_writer_node(state: ManufacturingState) -> dict:
     if fa:
         conversation_store.add_turn(user_id, "assistant", fa.answer, thread_id=thread_id)
 
+    # turn_id(=request_id)를 함께 저장해 후속 턴이 특정 과거 artifact를 지목 조회할 수 있게 한다.
+    turn_id = state.get("request_id") or None
     pred = state.get("prediction_result")
     if pred and pred.status in {"OK", "PARTIAL"} and pred.summary:
-        conversation_store.add_summary(user_id, "prediction", pred.summary, thread_id=thread_id)
+        conversation_store.add_summary(user_id, "prediction", pred.summary, thread_id=thread_id, turn_id=turn_id)
     if _should_save_diagnosis_context(state, pred, packet):
         import uuid
         features = {k: v.value for k, v in packet.selected_machine_values.items() if v.value is not None}
@@ -85,10 +87,10 @@ def memory_writer_node(state: ManufacturingState) -> dict:
         conversation_store.save_diagnosis_context(user_id, thread_id, diag)
     ev = state.get("evidence_bundle")
     if ev:
-        conversation_store.add_summary(user_id, "evidence", _compact_evidence_artifact_for_memory(ev), thread_id=thread_id)
+        conversation_store.add_summary(user_id, "evidence", _compact_evidence_artifact_for_memory(ev), thread_id=thread_id, turn_id=turn_id)
     sql = state.get("sql_result")
     if sql:
-        conversation_store.add_summary(user_id, "sql", _compact_sql_artifact_for_memory(sql), thread_id=thread_id)
+        conversation_store.add_summary(user_id, "sql", _compact_sql_artifact_for_memory(sql), thread_id=thread_id, turn_id=turn_id)
 
     # 실행 이력 저장
     run_store.save(state.get("request_id", "?"), user_id, thread_id,
