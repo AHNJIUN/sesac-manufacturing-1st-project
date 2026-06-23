@@ -80,16 +80,29 @@ def evidence_agent(state: ManufacturingState) -> dict:
     rag_plan, docs, citations = result["plan"], result["documents"], result["citations"]
     rag_status = result.get("status") or ("OK" if docs else "EMPTY")
     rag_limitations = list(result.get("limitations") or [])
+    # NO_EVIDENCE: 추측 차단 + 담당자 확인 안내 (retrieval layer가 생성한 guidance를 그대로 전달)
+    rag_guidance = result.get("guidance")
 
     if not docs:
+        # NO_EVIDENCE(또는 결과 없음)는 계약상 status="EMPTY"로 닫되, 사용자 안내 문구로 담당자 확인을 노출한다.
         bundle = EvidenceArtifact(
             status="EMPTY",
             retrieval_profile=rag_plan["profile"],
             queries=[rag_plan["search_query"]],
             documents=[],
             citations=[],
-            evidence_summary="관련 문서 근거를 찾지 못했습니다.",
-            limitations=rag_limitations or ["검색된 문서가 없어 근거 기반 단정은 제한됩니다."],
+            evidence_summary=rag_guidance or "관련 문서 근거를 찾지 못했습니다.",
+            limitations=(rag_limitations + (["NO_EVIDENCE"] if rag_status == "NO_EVIDENCE" else []))
+                        or ["검색된 문서가 없어 근거 기반 단정은 제한됩니다."],
+            mode=rag_plan["mode"],
+            search_query=rag_plan["search_query"],
+            tags=rag_plan["tags"],
+            doc_whitelist=rag_plan["doc_whitelist"],
+            failure_types=rag_plan["failure_types"],
+            failure_ko=rag_plan["failure_ko"],
+            is_prediction_based=(rag_plan["mode"] == "B"),
+            supervisor_intent=getattr(plan, "intent", None),
+            feedback=feedback,
             is_retry=bool(feedback),
         )
         return {"evidence_bundle": bundle}
