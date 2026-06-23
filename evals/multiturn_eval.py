@@ -99,6 +99,53 @@ CASES = [
                               created_at="2026-06-23T10:05:00"),
          ]), exp_mode="SELECT_HISTORY",
          check=lambda d: d.resolved_features.get("rotational_speed") == 1600.0),
+
+    # ===== 추가: 다른 종류의 멀티턴 =====
+    dict(id="multi_feature_patch",  # 여러 feature 동시 변경
+         msg="토크 70이고 회전속도 1500으로 둘 다 바꾸면 위험이 어때?",
+         sel=lambda m: _selected(m), exp_mode="PATCH_ACTIVE",
+         check=lambda d: d.resolved_features.get("torque") == 70.0
+                         and d.resolved_features.get("rotational_speed") == 1500.0
+                         and d.resolved_features.get("tool_wear") == 180.0),
+    dict(id="air_vs_process_temp",  # 공기/공정 온도 구분 — 공기만 바꿈
+         msg="공기 온도만 295로 보면 위험이 달라져?",
+         sel=lambda m: _selected(m), exp_mode="PATCH_ACTIVE",
+         check=lambda d: d.resolved_features.get("air_temperature") == 295.0
+                         and d.resolved_features.get("process_temperature") == 311.0),
+    dict(id="ref_prev_sql",  # 이전 SQL 결과 참조(carryover)
+         msg="방금 조회한 고장 이력 중 다운타임 큰 것만 다시 정리해줘",
+         sel=lambda m: _selected(m, active=None, recents=[], prev_pred=False,
+                                 prev_sql="status=OK; detail rows=20; ..."),
+         exp_mode=None, check=lambda d: d.is_followup and d.uses_previous_sql),
+    dict(id="ref_prev_evidence",  # 이전 문서 근거 참조(carryover)
+         msg="아까 그 문서 근거에서 점검 항목만 더 자세히 설명해줘",
+         sel=lambda m: _selected(m, active=None, recents=[], prev_pred=False,
+                                 prev_ev="status=OK; sources=[...]"),
+         exp_mode=None, check=lambda d: d.is_followup and d.uses_previous_evidence),
+    dict(id="negation_new_case",  # 부정문 — 이전 거 말고 새 케이스
+         msg="아니 그거 말고, 토크 30짜리 새 케이스로 진단해줘",
+         sel=lambda m: _selected(m), exp_mode="CURRENT_ONLY",
+         check=lambda d: d.resolved_features.get("torque") == 30.0 and not d.reused_features),
+    dict(id="sql_prior_then_predict",  # 이전이 SQL뿐 → feature base 없음 → 합치면 안 됨
+         msg="그럼 토크 70으로 위험 진단해줘",
+         sel=lambda m: _selected(m, active=None, recents=[], prev_pred=False,
+                                 prev_sql="status=OK; ..."),
+         exp_mode="CURRENT_ONLY",
+         check=lambda d: d.resolved_features.get("torque") == 70.0 and "tool_wear" not in d.resolved_features),
+    dict(id="conversational_why",  # 대화형 후속 — 재진단 아님
+         msg="왜 그렇게 위험한 거야?", sel=lambda m: _selected(m),
+         exp_mode="REFER_ACTIVE_RESULT", soft=True, check=lambda d: not d.resolved_features),
+    dict(id="ordinal_select_history",  # 순서로 과거 조건 지목
+         msg="두 번째로 봤던 조건 그대로 다시 진단해줘",
+         sel=lambda m: _selected(m, recents=[
+             ACTIVE,
+             DiagnosisContext(id="diag-prev-2", turn_id="t2", user_id="u", thread_id="th",
+                              features={"air_temperature": 302.0, "process_temperature": 318.0,
+                                        "rotational_speed": 1300.0, "torque": 82.0, "tool_wear": 120.0},
+                              failure_types=["OSF"], prediction_summary="이전2: 과부하 위험 높음",
+                              created_at="2026-06-23T10:05:00"),
+         ]), exp_mode="SELECT_HISTORY", soft=True,
+         check=lambda d: d.resolved_features.get("torque") == 82.0),
 ]
 
 
@@ -118,7 +165,8 @@ def main() -> int:
             scored += 1; passed += int(ok)
         tag = "✓" if ok else ("~" if soft else "✗")
         if d is not None:
-            detail = f"mode={d.mode} resolved={ {k: d.resolved_features[k] for k in sorted(d.resolved_features)} } reused={sorted(d.reused_features)}"
+            carry = f"fup={int(d.is_followup)} uses(p/s/e)={int(d.uses_previous_prediction)}{int(d.uses_previous_sql)}{int(d.uses_previous_evidence)}"
+            detail = f"mode={d.mode} {carry} resolved={ {k: d.resolved_features[k] for k in sorted(d.resolved_features)} }"
             why = "" if ok else f"   ← 기대 mode={c['exp_mode']}, check_ok={check_ok}"
         else:
             detail, why = f"ERROR {err}", ""
