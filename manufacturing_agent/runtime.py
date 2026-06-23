@@ -18,7 +18,7 @@ DEMO_RUN_ID = str(int(time.time()))
 
 
 def make_runnable_config(user_id: str, thread_id: str, request_id: Optional[str] = None,
-                         *, checkpoint_ns: str = "", recursion_limit: int = 50,
+                         *, checkpoint_ns: str = "", recursion_limit: int = RECURSION_LIMIT,
                          source: str = "notebook") -> RunnableConfig:
     configurable = {"thread_id": thread_id, "user_id": user_id}
     if checkpoint_ns:
@@ -45,22 +45,6 @@ def make_initial_state(user_message: str, user_id: str, thread_id: str, request_
         "orchestrator_decision": None, "active_task_id": None,
         "route": None, "intent": None, "agent_feedback": {}, "consumed_replan_report_index": None,
         "input_decision": None, "intake_decision": None,
-    }
-
-
-def checkpoint_status(thread_id: str, user_id: Optional[str] = None, request_id: str = "checkpoint-status",
-                      *, checkpoint_ns: str = "") -> dict:
-    effective_user_id = user_id or DEMO_USER_ID
-    config = make_runnable_config(effective_user_id, thread_id, request_id, checkpoint_ns=checkpoint_ns)
-    snapshot = app.get_state(config)
-    values = snapshot.values or {}
-    return {
-        "next": tuple(snapshot.next or ()),
-        "request_id": values.get("request_id"),
-        "user_message": values.get("user_message"),
-        "active_task_id": values.get("active_task_id"),
-        "has_final_answer": bool(values.get("final_answer")),
-        "gate_count": len(values.get("gate_reports") or []),
     }
 
 
@@ -126,7 +110,7 @@ def run_turn(user_message: str, user_id: str, thread_id: str, request_id: str,
              *, resume_on_error: bool = True, max_resume_attempts: int = 1,
              checkpoint_ns: str = ""):
     config = make_runnable_config(user_id, thread_id, request_id,
-                                  checkpoint_ns=checkpoint_ns, recursion_limit=50)
+                                  checkpoint_ns=checkpoint_ns, recursion_limit=RECURSION_LIMIT)
     state_in = make_initial_state(user_message, user_id, thread_id, request_id, input_features)
     result = _invoke_resumable(app, state_in, config,
                                resume_on_error=resume_on_error,
@@ -138,6 +122,6 @@ def resume_turn(user_id: str, thread_id: str, request_id: str = "resume",
                 *, debug: bool = False, max_resume_attempts: int = 1,
                 checkpoint_ns: str = ""):
     config = make_runnable_config(user_id, thread_id, request_id,
-                                  checkpoint_ns=checkpoint_ns, recursion_limit=50)
+                                  checkpoint_ns=checkpoint_ns, recursion_limit=RECURSION_LIMIT)
     result = _invoke_from_checkpoint(app, config, max_resume_attempts=max_resume_attempts)
     return _print_turn_result(result.get("user_message", ""), result.get("input_features"), result, debug=debug)

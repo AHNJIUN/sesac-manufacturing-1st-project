@@ -1,7 +1,7 @@
 ﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
-from manufacturing_agent.agents.evidence_agent import SQL_TABLE_RE
+from manufacturing_agent.agents.sql_agent import SQL_TABLE_RE
 from manufacturing_agent.context.policy import detect_injection
 from manufacturing_agent.contracts.context import ContextPacket, DiagnosisContext, EvidenceArtifact, PredictionResult, SQLHistoryArtifact
 from manufacturing_agent.contracts.state import ManufacturingState
@@ -27,17 +27,19 @@ def _compact_sql_artifact_for_memory(sql: Optional[SQLHistoryArtifact]) -> str:
         lines.append(sql.summary)
     if sql.limitations:
         lines.append(f"limitations={sql.limitations[:3]}")
-    return " | ".join(lines)[:2500]
+    # 길이 캡 없이 원문 그대로 보존한다(sample_rows는 query당 2개·query 4개로 이미 구조적으로 제한됨).
+    return " | ".join(lines)
 
 def _compact_evidence_artifact_for_memory(ev: Optional[EvidenceArtifact]) -> str:
     if not ev:
         return ""
     sources = [c.get("source_id") for c in (ev.citations or [])[:5]]
     queries = (ev.queries or [])[:3]
+    # 길이 캡 없이 원문 그대로 보존한다(evidence_summary는 LLM 생성 요약으로 토큰 상한이 이미 적용됨).
     return (
         f"status={ev.status}; profile={ev.retrieval_profile}; queries={queries}; "
         f"sources={sources}; summary={ev.evidence_summary}; limitations={ev.limitations[:3]}"
-    )[:2500]
+    )
 
 def _should_save_diagnosis_context(state: ManufacturingState, pred: Optional[PredictionResult], packet: Optional[ContextPacket]) -> bool:
     if not pred or pred.status not in {"OK", "PARTIAL"}:
@@ -63,9 +65,11 @@ def memory_writer_node(state: ManufacturingState) -> dict:
     if fa:
         conversation_store.add_turn(user_id, "assistant", fa.answer, thread_id=thread_id)
 
+    # turn_id(=request_id)를 함께 저장해 후속 턴이 특정 과거 artifact를 지목 조회할 수 있게 한다.
+    turn_id = state.get("request_id") or None
     pred = state.get("prediction_result")
     if pred and pred.status in {"OK", "PARTIAL"} and pred.summary:
-        conversation_store.add_summary(user_id, "prediction", pred.summary, thread_id=thread_id)
+        conversation_store.add_summary(user_id, "prediction", pred.summary, thread_id=thread_id, turn_id=turn_id)
     if _should_save_diagnosis_context(state, pred, packet):
         import uuid
         features = {k: v.value for k, v in packet.selected_machine_values.items() if v.value is not None}
@@ -83,13 +87,16 @@ def memory_writer_node(state: ManufacturingState) -> dict:
         conversation_store.save_diagnosis_context(user_id, thread_id, diag)
     ev = state.get("evidence_bundle")
     if ev:
-        conversation_store.add_summary(user_id, "evidence", _compact_evidence_artifact_for_memory(ev), thread_id=thread_id)
+        conversation_store.add_summary(user_id, "evidence", _compact_evidence_artifact_for_memory(ev), thread_id=thread_id, turn_id=turn_id)
     sql = state.get("sql_result")
     if sql:
-        conversation_store.add_summary(user_id, "sql", _compact_sql_artifact_for_memory(sql), thread_id=thread_id)
+        conversation_store.add_summary(user_id, "sql", _compact_sql_artifact_for_memory(sql), thread_id=thread_id, turn_id=turn_id)
 
     # 실행 이력 저장
+    rt = state.get("run_trace")
+    rt_events = getattr(rt, "events", None) or (rt.get("events") if isinstance(rt, dict) else [])
     run_store.save(state.get("request_id", "?"), user_id, thread_id,
                    {"gate_reports": state.get("gate_reports", []),
-                    "retry_counts": state.get("retry_counts", {})})
+                    "retry_counts": state.get("retry_counts", {}),
+                    "run_trace": [e for e in (rt_events or [])]})
     return {"messages": [AIMessage(content=fa.answer)]} if fa else {}
