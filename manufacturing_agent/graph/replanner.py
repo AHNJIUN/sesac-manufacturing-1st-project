@@ -201,9 +201,30 @@ def supervisor_replanner_node(state: ManufacturingState, config: RunnableConfig 
     return {
         "execution_plan": new_plan,
         "supervisor_replanner_decision": decision,
-        "consumed_replan_report_index": report_index,
+        "consumed_replan_report_indices": [report_index] if report_index is not None else [],
         "active_task_id": None,
+        "active_task_ids": [],
         "route": RouteDecision(next_node="orchestrator_dispatcher", reason=decision.reason_summary),
     }
-
-
+    
+def hybrid_replanner_decision_batch(state, plan, repair_reports: list[dict]) -> SupervisorReplannerDecision:
+    """병렬에서 여러 task가 동시에 PLAN_REPAIR_REQUIRED일 때 한 결정으로 합친다."""
+    decisions = [hybrid_replanner_decision(state, plan, r) for r in repair_reports]
+    patches: list[TaskPatch] = []
+    targets: list[str] = []
+    reasons: list[str] = []
+    for d in decisions:
+        if d.action == "PATCH_AND_RERUN":
+            patches.extend(d.task_patches)
+            targets.extend(d.target_task_ids)
+            reasons.append(d.reason_summary)
+        elif d.action in {"ASK_USER", "BLOCK"}:
+            return d
+    if not patches:
+        return decisions[-1] if decisions else SupervisorReplannerDecision(
+            action="FINALIZE_WITH_WARNINGS", reason_summary="no patch generated")
+    return SupervisorReplannerDecision(
+        action="PATCH_AND_RERUN", target_task_ids=targets, task_patches=patches,
+        invalidate_task_ids=["final_1"],
+        reason_summary="; ".join(reasons),
+    )

@@ -43,7 +43,10 @@ def make_initial_state(user_message: str, user_id: str, thread_id: str, request_
         "messages": [], "agent_contexts": {}, "gate_reports": [], "retry_counts": {},
         "execution_plan": None, "supervisor_planner_decision": None, "supervisor_replanner_decision": None, "sql_intent_decision": None,
         "orchestrator_decision": None, "active_task_id": None,
-        "route": None, "intent": None, "agent_feedback": {}, "consumed_replan_report_index": None,
+        "active_task_ids": [],
+        "consumed_replan_report_indices": [],
+        "consumed_replan_report_index": None,
+        "route": None, "intent": None, "agent_feedback": {},
         "input_decision": None, "intake_decision": None,
     }
 
@@ -94,6 +97,8 @@ def _print_turn_result(user_message: str, input_features: Optional[dict], result
     plan = result.get("execution_plan")
     if plan:
         print("🧭 TASKS:", [(t.task_id, t.task_type, t.status, t.retry_count) for t in plan.tasks])
+    if debug:
+        print("🧭 ACTIVE TASKS:", result.get("active_task_ids"))
     pk = result.get("context_packet")
     if pk:
         resolution = pk.context_resolution
