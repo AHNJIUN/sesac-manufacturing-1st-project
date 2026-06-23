@@ -18,6 +18,9 @@ ContextMode = Literal[
     "REFER_ACTIVE_RESULT",
 ]
 
+# SQL 이력 조회 query type 집합(단일 출처). planner/evidence_agent가 공유한다.
+SQL_QUERY_TYPES = ("similar_incidents", "failure_history", "corrective_actions", "repeated_patterns")
+
 class DiagnosisContext(BaseModel):
     """진단에 실제 사용된 feature 묶음의 재사용 가능한 snapshot."""
     id: str

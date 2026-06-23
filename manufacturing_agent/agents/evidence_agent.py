@@ -2,7 +2,7 @@ from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.packer import build_context_summary
-from manufacturing_agent.contracts.context import ContextPacket, EvidenceArtifact, ExecutionPlan, PredictionResult, SQLHistoryArtifact, SQLIntentDecision, SQLQueryResult, TaskSpec
+from manufacturing_agent.contracts.context import SQL_QUERY_TYPES, ContextPacket, EvidenceArtifact, ExecutionPlan, PredictionResult, SQLHistoryArtifact, SQLIntentDecision, SQLQueryResult, TaskSpec
 from manufacturing_agent.contracts.state import ManufacturingState
 from manufacturing_agent.services.rag_service import build_citation_aware_docs, rag_search
 
@@ -625,8 +625,7 @@ def sql_agent(state: ManufacturingState, config: RunnableConfig = None) -> dict:
     if task_params:
         context_summary = (context_summary + "\n" if context_summary else "") + f"Supervisor SQL task params: {json.dumps(task_params, ensure_ascii=False)}"
     msg = state.get("user_message", "")
-    allowed_qtypes = {"similar_incidents", "failure_history", "corrective_actions", "repeated_patterns"}
-    planned_query_types = [q for q in (task_params.get("query_types") or []) if q in allowed_qtypes]
+    planned_query_types = [q for q in (task_params.get("query_types") or []) if q in SQL_QUERY_TYPES]
     sql_intent = SQLIntentDecision(
         query_types=planned_query_types,
         failure_type=task_params.get("failure_type"),

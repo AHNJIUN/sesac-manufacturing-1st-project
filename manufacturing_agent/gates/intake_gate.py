@@ -5,7 +5,7 @@ from manufacturing_agent.context.packer import RECENT_TURN_WINDOW, _messages_to_
 from manufacturing_agent.context.policy import detect_injection
 from manufacturing_agent.contracts.context import GateReport, InputDecision, InputFlags, IntakeDecision
 from manufacturing_agent.contracts.state import ManufacturingState
-from manufacturing_agent.util import _json_object
+from manufacturing_agent.util import _coerce_bool, _json_object
 
 # ---------- gates/intake_gate.py (single LLM intake · service + request safety) ----------
 # 초반에는 input_gate와 safety_gate를 분리하지 않는다.
@@ -59,18 +59,6 @@ INTAKE_SYS = (
 
 _VALID_INPUT_REASONS = {"none", "empty", "injection", "gibberish", "out_of_scope"}
 _VALID_SAFETY_ACTIONS = {"ALLOW", "ANSWER_SAFELY", "BLOCK_DANGEROUS_EXECUTION", "HUMAN_HANDOFF"}
-
-def _coerce_bool(value, default: bool = False) -> bool:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        low = value.strip().lower()
-        if low in {"true", "1", "yes", "y"}:
-            return True
-        if low in {"false", "0", "no", "n"}:
-            return False
-    return default
-
 
 def _normalize_intake_payload(data: dict) -> dict:
     input_reason = str(data.get("input_reason", "none")).strip().lower()

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
-from manufacturing_agent.contracts.context import ExecutionPlan, SupervisorPlannerDecision, TaskSpec
+from manufacturing_agent.contracts.context import SQL_QUERY_TYPES, ExecutionPlan, SupervisorPlannerDecision, TaskSpec
 from manufacturing_agent.contracts.state import ManufacturingState
 from manufacturing_agent.util import _json_object
 
@@ -44,7 +44,6 @@ _PLANNER_INTENTS = {
     "prediction_diagnosis", "document_qa", "history_lookup",
     "combined_analysis", "safety_guidance", "general_manufacturing",
 }
-_PLANNER_QTYPES = {"similar_incidents", "failure_history", "corrective_actions", "repeated_patterns"}
 
 
 def _parse_supervisor_planner_decision(raw: str) -> SupervisorPlannerDecision:
@@ -55,7 +54,7 @@ def _parse_supervisor_planner_decision(raw: str) -> SupervisorPlannerDecision:
     qtypes = data.get("sql_query_intents") or []
     if isinstance(qtypes, str):
         qtypes = [qtypes]
-    data["sql_query_intents"] = [q for q in qtypes if q in _PLANNER_QTYPES]
+    data["sql_query_intents"] = [q for q in qtypes if q in SQL_QUERY_TYPES]
     focus = data.get("evidence_focus") or []
     if isinstance(focus, str):
         focus = [focus]
