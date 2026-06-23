@@ -131,3 +131,4 @@ def test_parse_failure_closes_safely(stub_llm):
     stub.set_raw("총체적 난국 not json")
     out = ig.intake_gate(_state("토크 60 진단"))
     assert out["input_decision"].blocked is True
+    assert out["input_decision"].reason == "human_handoff"
