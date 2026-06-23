@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import DiagnosisContext
@@ -250,4 +250,3 @@ class RunStore:
 
 conversation_store = ConversationStore()
 run_store = RunStore()
-print("장기 메모리(SQLite) 준비 완료:", LONGTERM_DB)

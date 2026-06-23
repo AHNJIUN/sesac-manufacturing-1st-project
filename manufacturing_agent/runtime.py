@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.state import ManufacturingState
@@ -6,11 +6,9 @@ from manufacturing_agent.graph.build import build_graph, make_sqlite_saver
 
 # SQLite 체크포인터: 노트북 수명 동안 컨텍스트를 유지
 sql_saver = make_sqlite_saver(CHECKPOINT_DB)
-print("SQLite 체크포인터(SqliteSaver + explicit msgpack allowlist) 활성:", CHECKPOINT_DB)
 
 # SQLite 체크포인터로 컴파일 (세션 간 복원 시연)
 app = build_graph(checkpointer=sql_saver)
-print("그래프 컴파일 완료")
 
 # Demo execution helpers
 import time

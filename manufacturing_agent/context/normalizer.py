@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import ContextResolution, MachineValue
@@ -40,4 +40,3 @@ def normalize_context(selected: dict) -> tuple[dict[str, MachineValue], list[str
     if selected.get("injection_in_current"):
         warnings.append("현재 입력에서 prompt injection 의심 패턴 감지 → 무력화")
     return merged, warnings
-print("context_normalizer 정의 완료")

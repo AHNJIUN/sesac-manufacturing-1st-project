@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 
@@ -54,7 +54,6 @@ except Exception as e:
         "먼저 01_embed_documents_chroma.ipynb를 실행해 document/를 임베딩하세요."
     ) from e
 
-print(f"Evidence RAG ChromaDB 연결 완료: collection={_collection_name}, embedding={_embed_label}, chunks={_chroma_collection.count()}")
 
 
 def vector_search(query: str, k: int = 3, type_filter: Optional[str] = None) -> list[dict]:
@@ -79,4 +78,3 @@ def vector_search(query: str, k: int = 3, type_filter: Optional[str] = None) -> 
     return out
 
 
-print("Evidence RAG vector_search 준비 완료")

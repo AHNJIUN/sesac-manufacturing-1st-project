@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import ExecutionPlan, TaskSpec
@@ -124,4 +124,3 @@ class PlanOps:
         return PlanOps.with_task(plan, task_id, status="RUNNING")
 
 
-print("plan_ops(PlanOps Plan-and-Execute 상태머신 엔진) 정의 완료")

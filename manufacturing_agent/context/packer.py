@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.policy import STANDARD_FEATURES, detect_injection
@@ -285,4 +285,3 @@ def pack_contexts(user_message: str, merged: dict[str, MachineValue],
             prior_results=prior_results),
     }
     return packet, agent_ctx
-print("context_packer 정의 완료")

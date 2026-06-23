@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.policy import detect_injection, extract_machine_values
@@ -29,4 +29,3 @@ def select_context(user_message: str, user_id: str, store: ConversationStore,
         "previous_sql_summary": store.latest_summary(user_id, "sql", thread_id=thread_id),
         "injection_in_current": detect_injection(user_message),
     }
-print("context_selector 정의 완료")

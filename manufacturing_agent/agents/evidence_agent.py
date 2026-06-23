@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import ContextPacket, EvidenceArtifact, ExecutionPlan, PredictionResult, SQLHistoryArtifact, SQLIntentDecision, SQLQueryResult, TaskSpec
@@ -183,7 +183,6 @@ def evidence_agent(state: ManufacturingState) -> dict:
         is_retry=bool(feedback),
     )
     return {"evidence_bundle": bundle}
-print("evidence_agent(EvidenceArtifact) 정의 완료")
 
 # ---------- agents/sql_agent/adapter.py ----------
 try:
@@ -346,7 +345,6 @@ def bootstrap_failure_history_db(db_path: str = SQL_HISTORY_DB) -> None:
     raise FileNotFoundError(f"Failure history schema file not found: {schema_path}")
 
 bootstrap_failure_history_db()
-print("SQL 고장 이력 DB 준비 완료:", SQL_HISTORY_DB)
 
 def validate_sql_query(sql: str, deps: SQLAgentDeps) -> None:
     """SELECT-only, allowed_tables, LIMIT, forbidden keyword 검증. 실패 시 ValueError 발생."""
@@ -703,4 +701,3 @@ def sql_agent(state: ManufacturingState, config: RunnableConfig = None) -> dict:
             ))
     artifact = build_sql_history_artifact_from_results(results, reason_summary=response.reason_summary)
     return {"sql_result": artifact, "sql_intent_decision": sql_intent}
-print("sql_agent(PydanticAI Text-to-SQL only + readonly SQLite execution) 정의 완료 | pydantic_ai:", PYDANTIC_AI_AVAILABLE, "| model:", DEFAULT_PYDANTIC_SQL_MODEL, "| db:", SQL_HISTORY_DB)

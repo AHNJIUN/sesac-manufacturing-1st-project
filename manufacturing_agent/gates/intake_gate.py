@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.packer import _messages_to_recent_turns, _summarize_recent_turns
@@ -199,4 +199,3 @@ def intake_gate(state: ManufacturingState) -> dict:
     d = _decision_from_intake(intake, layer=layer, is_mfg=flags.is_manufacturing)
     return _intake_result(state, d, flags, intake, passed_msg=msg)
 
-print("intake_gate(single LLM intake + request safety) 정의 완료")

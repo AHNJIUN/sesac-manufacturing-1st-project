@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import ExecutionPlan, SupervisorPlannerDecision, TaskSpec
@@ -188,4 +188,3 @@ def supervisor_planner_node(state: ManufacturingState) -> dict:
             "active_task_id": None, "intent": plan.intent}
 
 
-print("planner(SupervisorPlanner) 정의 완료")

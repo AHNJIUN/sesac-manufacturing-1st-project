@@ -1,4 +1,4 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 from manufacturing_agent._common import *  # noqa: F401,F403
 from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.agents.evidence_agent import DEFAULT_SQL_DEPS, get_active_task, get_active_task_criteria, get_active_task_params, validate_sql_query
@@ -258,4 +258,3 @@ def output_safety_gate(state: ManufacturingState) -> dict:
     updates["gate_reports"] = state.get("gate_reports", []) + [report.model_dump()]
     return updates
 
-print("gates 정의 완료 (prediction/evidence/sql/output_safety)")
