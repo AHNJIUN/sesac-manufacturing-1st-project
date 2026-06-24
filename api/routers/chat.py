@@ -41,6 +41,13 @@ def _step_detail(node: str, delta: dict) -> str:
             tasks = [t.task_type for t in getattr(plan, "tasks", []) if t.task_type != "final_answer"]
             ko = ", ".join(_TASK_KO.get(t, t) for t in tasks)
             return f"필요 작업: {ko}" if ko else ""
+        # SSE 라벨 보강
+        if node == "orchestrator_dispatcher":
+            decision = delta.get("orchestrator_decision")
+            ids = getattr(decision, "dispatched_task_ids", []) if decision else []
+            if len(ids) > 1:
+                return f"병렬 실행: {', '.join(ids)}"
+            return ", ".join(ids)
         if node in {"prediction_gate", "evidence_gate", "sql_gate", "intake_gate", "output_safety_gate"}:
             reports = delta.get("gate_reports") or []
             if reports:

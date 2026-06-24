@@ -134,9 +134,10 @@ def _prediction_task(decision: SupervisorPlannerDecision) -> TaskSpec:
     )
 
 
-def _sql_task(decision: SupervisorPlannerDecision) -> TaskSpec:
+def _sql_task(decision, has_prediction: bool) -> TaskSpec:
     return TaskSpec(
         task_id="sql_1", task_type="sql",
+        depends_on=["prediction_1"] if has_prediction else [],
         reason=decision.reason_summary or "SupervisorPlanner가 이력 조회 task 필요로 판단",
         params={"query_types": list(decision.sql_query_intents), "failure_type": None,
                 "default_time_window_days": 30},
@@ -170,7 +171,7 @@ def supervisor_planner_node(state: ManufacturingState) -> dict:
     decision = _llm_supervisor_planner_decision(state)
     builders = [
         (decision.needs_prediction, _prediction_task),
-        (decision.needs_sql, _sql_task),
+        (decision.needs_sql, lambda d: _sql_task(d, decision.needs_prediction)),
         (decision.needs_evidence, _evidence_task),
     ]
     tasks: list[TaskSpec] = [build(decision) for need, build in builders if need]

@@ -323,8 +323,15 @@ class SupervisorReplannerDecision(BaseModel):
     reason_summary: str = ""
 
 class OrchestratorDecision(BaseModel):
-    action: Literal["DISPATCH_TASK", "RETRY_TASK", "REPLAN", "FINALIZE", "WAIT_USER_INPUT", "BLOCKED"] = "DISPATCH_TASK"
-    next_node: Literal["prediction_agent", "evidence_agent", "sql_agent", "final_answer", "supervisor_replanner"]
+    action: Literal[
+        "DISPATCH_TASK", "DISPATCH_BATCH", "RETRY_TASK",
+        "REPLAN", "FINALIZE", "WAIT_USER_INPUT", "BLOCKED"
+    ] = "DISPATCH_TASK"
+    next_node: Literal[
+        "prediction_agent", "evidence_agent", "sql_agent",
+        "final_answer", "supervisor_replanner"
+    ]
+    dispatched_task_ids: list[str] = Field(default_factory=list)
     active_task_id: Optional[str] = None
     reason_summary: str = ""
 

@@ -45,6 +45,18 @@ def _last_report(state, gate_name=None) -> Optional[dict]:
             return r
     return None
 
+def unprocessed_reports(state, plan: ExecutionPlan) -> list[tuple[int, dict]]:
+    """consumed_replan_report_indices에 없는 worker-gate report 전체."""
+    reports = state.get("gate_reports") or []
+    consumed = set(state.get("consumed_replan_report_indices") or [])
+    out: list[tuple[int, dict]] = []
+    for idx, r in enumerate(reports):
+        if idx in consumed:
+            continue
+        if r.get("gate_name") not in WORKER_GATE_TO_TASK:
+            continue
+        out.append((idx, r))
+    return out
 
 class PlanOps:
     """ExecutionPlan 위의 순수 연산. 입력 plan을 변형하지 않고 항상 새 plan을 반환한다."""
@@ -124,3 +136,35 @@ class PlanOps:
         return PlanOps.with_task(plan, task_id, status="RUNNING")
 
 
+    @staticmethod
+    def next_runnable_batch(plan: ExecutionPlan, limit: Optional[int] = None) -> list[TaskSpec]:
+        """deps 종결된 PENDING worker task들. final_answer는 절대 batch에 포함하지 않는다."""
+        batch: list[TaskSpec] = []
+        seen_types: set[str] = set()
+        for task in plan.tasks:
+            if task.task_type == "final_answer":
+                continue
+            if task.status != "PENDING":
+                continue
+            if not PlanOps.deps_terminal(plan, task):
+                continue
+            if task.task_type in seen_types:
+                continue
+            batch.append(task)
+            seen_types.add(task.task_type)
+            if limit is not None and len(batch) >= limit:
+                break
+        if batch:
+            return batch
+        final = next((t for t in plan.tasks if t.task_type == "final_answer"), None)
+        if (final and final.status not in TERMINAL_TASK_STATUSES
+                and PlanOps.deps_terminal(plan, final)):
+            return [final]
+        return []
+    
+    @staticmethod
+    def mark_running_batch(plan: ExecutionPlan, task_ids: list[str]) -> ExecutionPlan:
+        ids = set(task_ids)
+        tasks = [t.model_copy(update={"status": "RUNNING"}) if t.task_id in ids else t
+                for t in plan.tasks]
+        return plan.model_copy(update={"tasks": tasks})

@@ -199,3 +199,5 @@ def call_llm(system: str, user: str, *, tier: str = "default") -> str:
 
 # import * 가 밑줄(_x) 이름까지 가져오도록 명시 export
 __all__ = [n for n in dir() if not n.startswith("__")]
+MAX_PARALLEL_WORKERS = int(os.environ.get("MAX_PARALLEL_WORKERS", "3")) # 병렬 실행 상한
+PARALLEL_DISPATCH_ENABLED = os.environ.get("PARALLEL_DISPATCH", "0") == "1"
