@@ -1,5 +1,5 @@
-{"id": "rag_spindle_overheat", "split": "clear", "query": "스핀들 베어링이 과열되는데 점검 절차와 윤활 확인 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Spindle - Troubleshooting Guide"], "k": 16}
-{"id": "rag_chatter", "split": "clear", "query": "공구 마모와 밀 채터(chatter) 점검 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Chatter - Troubleshooting - TG0100"], "k": 16}
-{"id": "rag_out_of_corpus", "split": "holdout", "query": "용접 로봇 토치 케이블 교체 주기", "profile": "troubleshooting_rag", "relevant_doc_ids": [], "k": 16, "note": "코퍼스 미보유 → 정답 문서 없음(생성단 정직성으로 평가)."}
-{"id": "rag_chatter_detail", "split": "clear", "query": "밀 채터 원인과 절삭 조건 조정", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Chatter - Troubleshooting - TG0100"], "k": 16}
-{"id": "rag_spindle_runout", "split": "adversarial", "query": "스핀들 런아웃 점검 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Spindle - Troubleshooting Guide"], "k": 16}
+{"id": "rag_spindle_overheat", "split": "clear", "query": "스핀들 베어링이 과열되는데 점검 절차와 윤활 확인 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Spindle - Troubleshooting Guide"], "k": 32}
+{"id": "rag_chatter", "split": "clear", "query": "공구 마모와 밀 채터(chatter) 점검 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Chatter - Troubleshooting - TG0100"], "k": 32}
+{"id": "rag_out_of_corpus", "split": "holdout", "query": "용접 로봇 토치 케이블 교체 주기", "profile": "troubleshooting_rag", "relevant_doc_ids": [], "k": 32, "note": "코퍼스 미보유 → 정답 문서 없음(생성단 정직성으로 평가)."}
+{"id": "rag_chatter_detail", "split": "clear", "query": "밀 채터 원인과 절삭 조건 조정", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Chatter - Troubleshooting - TG0100"], "k": 32}
+{"id": "rag_spindle_runout", "split": "adversarial", "query": "스핀들 런아웃 점검 방법", "profile": "troubleshooting_rag", "relevant_doc_ids": ["haas/haascnc.com-Mill Spindle - Troubleshooting Guide"], "k": 32}
