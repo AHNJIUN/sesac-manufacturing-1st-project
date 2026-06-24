@@ -4,11 +4,12 @@ from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.contracts.context import SQL_QUERY_TYPES, ExecutionPlan, SupervisorPlannerDecision, TaskSpec
 from manufacturing_agent.contracts.state import ManufacturingState
 from manufacturing_agent.util import _json_object
-from manufacturing_agent.prompts.supervisor_planner import SUPERVISOR_PLANNER_SYS
+from manufacturing_agent.prompts import load_prompt
 
 # ---------- graph/planner.py — SupervisorPlanner (사용자 의도 -> ExecutionPlan) ----------
 # 답변을 만들지 않고, 어떤 worker task가 필요한지와 task params만 판단한다.
-# SUPERVISOR_PLANNER_SYS 시스템 프롬프트는 manufacturing_agent/prompts/ 로 분리됨
+# 시스템 프롬프트는 manufacturing_agent/prompts/supervisor_planner.txt 로 분리됨
+SUPERVISOR_PLANNER_SYS = load_prompt("supervisor_planner")
 
 _PLANNER_INTENTS = {
     "prediction_diagnosis", "document_qa", "history_lookup",

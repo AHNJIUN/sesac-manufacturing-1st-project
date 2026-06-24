@@ -4,13 +4,14 @@ from manufacturing_agent.config import *  # noqa: F401,F403
 from manufacturing_agent.context.packer import _summarize_recent_turns
 from manufacturing_agent.contracts.context import ContextDecision, ContextMode, DiagnosisContext
 from manufacturing_agent.util import _json_object
-from manufacturing_agent.prompts.context_manager import CONTEXT_DECISION_SYS
+from manufacturing_agent.prompts import load_prompt
 
 # ---------- context/engine.py — 단일 ContextDecision (carryover + resolution 통합) ----------
 # 기존 _llm_context_carryover + resolve_context(2콜)을 단일 LLM 1콜 + short-circuit으로 대체한다.
 # LLM 판단을 그대로 믿지 않고 mode 강등/patch 화이트리스트/feature 계산을 코드가 결정적으로 검증한다.
 
-# CONTEXT_DECISION_SYS 시스템 프롬프트는 manufacturing_agent/prompts/ 로 분리됨
+# 시스템 프롬프트는 manufacturing_agent/prompts/context_manager.txt 로 분리됨
+CONTEXT_DECISION_SYS = load_prompt("context_manager")
 
 _ALLOWED_REFS = {"prediction", "sql", "evidence"}
 
