@@ -13,7 +13,9 @@ def test_parallel_state_merge():
     g.add_node("b", _node_b)
     g.add_node("end", lambda s: {})
     g.add_conditional_edges(START, lambda _: [Send("a", {}), Send("b", {})], ["a", "b"])
-    g.add_edge("a", "end"); g.add_edge("b", "end"); g.add_edge("end", END)
+    g.add_edge("a", "end")
+    g.add_edge("b", "end")
+    g.add_edge("end", END)
     app = g.compile()
     out = app.invoke({})
     assert len(out["gate_reports"]) == 2

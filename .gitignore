@@ -30,6 +30,3 @@ Thumbs.db
 
 # 용량 큰 문서 원본 (필요 시)
 # document/
-
-verify_fanin.py
-docs/_scratch/

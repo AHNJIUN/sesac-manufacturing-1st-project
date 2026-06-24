@@ -171,7 +171,7 @@ def supervisor_planner_node(state: ManufacturingState) -> dict:
     decision = _llm_supervisor_planner_decision(state)
     builders = [
         (decision.needs_prediction, _prediction_task),
-        (decision.needs_sql, _sql_task),
+        (decision.needs_sql, lambda d: _sql_task(d, decision.needs_prediction)),
         (decision.needs_evidence, _evidence_task),
     ]
     tasks: list[TaskSpec] = [build(decision) for need, build in builders if need]

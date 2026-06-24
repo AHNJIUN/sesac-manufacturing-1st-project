@@ -198,10 +198,13 @@ def supervisor_replanner_node(state: ManufacturingState, config: RunnableConfig 
     report_index = (len(state.get("gate_reports", []) or []) - 1) if last else None
     decision = hybrid_replanner_decision(state, plan, last)
     new_plan = apply_replanner_decision(plan, decision, last)
+    consumed = list(state.get("consumed_replan_report_indices") or [])
+    if report_index is not None and report_index not in consumed:
+        consumed.append(report_index)
     return {
         "execution_plan": new_plan,
         "supervisor_replanner_decision": decision,
-        "consumed_replan_report_indices": [report_index] if report_index is not None else [],
+        "consumed_replan_report_indices": consumed,
         "active_task_id": None,
         "active_task_ids": [],
         "route": RouteDecision(next_node="orchestrator_dispatcher", reason=decision.reason_summary),

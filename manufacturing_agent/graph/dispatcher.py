@@ -32,8 +32,9 @@ def orchestrator_dispatcher(state: ManufacturingState, config: RunnableConfig = 
     pending = unprocessed_reports(state, plan)
     new_consumed = list(state.get("consumed_replan_report_indices") or [])
     replan_report = None
-    for idx, rep in pending:  
+    for idx, rep in pending:
         plan = PlanOps.apply_gate_report(plan, rep)
+        new_consumed.append(idx)
         if rep.get("status") == "PLAN_REPAIR_REQUIRED" and replan_report is None:
             replan_report = (idx, rep)
 
@@ -43,7 +44,6 @@ def orchestrator_dispatcher(state: ManufacturingState, config: RunnableConfig = 
     # (3) PLAN_REPAIR면 replanner 라우팅
     if replan_report is not None:
         idx, rep = replan_report
-        new_consumed.append(idx)
         decision = OrchestratorDecision(
             action="REPLAN", next_node="supervisor_replanner",
             active_task_id=rep.get("task_id"),
@@ -68,6 +68,7 @@ def orchestrator_dispatcher(state: ManufacturingState, config: RunnableConfig = 
             reason_summary="실행 가능한 task가 없어 최종 답변으로 종료",
         ) 
         return {"execution_plan": plan, "orchestrator_decision": decision,
+                "consumed_replan_report_indices": new_consumed,
                 "route": RouteDecision(next_node="final_answer", reason=decision.reason_summary)}
 
     if batch[0].task_type == "final_answer":
@@ -81,6 +82,7 @@ def orchestrator_dispatcher(state: ManufacturingState, config: RunnableConfig = 
         return {"execution_plan": plan, "orchestrator_decision": decision,
                 "active_task_id": batch[0].task_id,
                 "active_task_ids": [batch[0].task_id],
+                "consumed_replan_report_indices": new_consumed,
                 "route": RouteDecision(next_node="final_answer", reason=decision.reason_summary)}
 
     plan = PlanOps.mark_running_batch(plan, [t.task_id for t in batch])
@@ -99,6 +101,7 @@ def orchestrator_dispatcher(state: ManufacturingState, config: RunnableConfig = 
         "orchestrator_decision": decision,
         "active_task_id": batch[0].task_id,
         "active_task_ids": [t.task_id for t in batch],
+        "consumed_replan_report_indices": new_consumed,
         "route": RouteDecision(next_node=TASK_TO_NODE[batch[0].task_type], reason=decision.reason_summary),
     }
 
