@@ -23,4 +23,5 @@
 ## 참고 상수
 - reference_date = `2026-06-21`. failure_type ∈ {TWF, HDF, OSF, PWF, SAFETY_INTERLOCK}.
 - features: type(L/M/H), air_temperature, process_temperature, rotational_speed, torque, tool_wear.
-- 문서 코퍼스: haas(TG0100 채터/TG0101 스핀들/TG0157·0158 벡터드라이브), kosha(M-114 윤활/M-131 결함진단/M-191·192 안전제어/B-M-25 LOTO), osha(loto/machine_guarding/emergency).
+- 문서 코퍼스(**PDF 기준**, html 미고려): haas(Mechanical Service Manual / haascnc.com Mill Spindle / haascnc.com Mill Chatter PDF), kosha(M-114 윤활/M-131 결함진단/M-191·192 안전제어/M-1 CNC선반/B-M-25 LOTO).
+  - Vector Drive·osha는 현재 PDF 코퍼스에 없어 `rag_retrieval` golden에서 제외(html 전용). `rag_retrieval_eval.py`는 검색 결과의 .html source를 평가에서 제외한다.
