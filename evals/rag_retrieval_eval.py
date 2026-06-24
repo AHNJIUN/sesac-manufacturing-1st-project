@@ -15,7 +15,9 @@ from __future__ import annotations
 import os, sys, json, re
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))  # evals/ (corpus_docs import)
 from manufacturing_agent.services.rag_service import build_query, retrieve_stage, rag_search
+from corpus_docs import source_to_key, label_to_key  # 코퍼스 doc_key 단일 소스(드리프트 방지)
 
 GOLD = os.path.join(os.path.dirname(__file__), "golden", "rag_retrieval.jsonl")
 PASS_RECALL = 0.5
@@ -36,11 +38,24 @@ def _tokens(doc_id: str) -> list[str]:
 
 
 def _doc_match(retrieved_norm: str, gold_id: str) -> bool:
-    """golden id의 핵심 토큰이 모두 retrieved source에 포함되면 같은 문서로 인정.
-    (접두어/확장자 차이에 견고; 코드 토큰 'tg0101','m-192-2017' 등이 문서를 변별)."""
+    """같은 문서인지 판정. 1순위: 공유 doc_key 레지스트리(corpus_docs)로 정규화 비교
+    (파일명 드리프트에 견고). 둘 다 키 해석되면 키 동등성, 아니면 토큰 부분일치로 폴백."""
+    rk, gk = source_to_key(retrieved_norm), label_to_key(gold_id)
+    if rk and gk:
+        return rk == gk
     r = (retrieved_norm or "").lower()
     toks = _tokens(gold_id)
     return bool(toks) and all(t in r for t in toks)
+
+
+def validate_golden(cases: list[dict]) -> list[str]:
+    """golden 라벨이 현재 코퍼스 doc_key로 해석되는지 검사. 미해석=코퍼스 불일치(드리프트)."""
+    unknown = []
+    for c in cases:
+        for g in (c.get("relevant_doc_ids") or []):
+            if not label_to_key(g):
+                unknown.append(f"{c.get('id')}: {g}")
+    return unknown
 
 
 def ranked_sources(query: str, k: int, profile: str = "troubleshooting_rag") -> list[str]:
@@ -85,6 +100,11 @@ def main() -> int:
     if not _preflight():
         return 1
     cases = [json.loads(l) for l in open(GOLD, encoding="utf-8") if l.strip()]
+    drift = validate_golden(cases)
+    if drift:
+        print("⚠ 코퍼스 미등록 golden 라벨(드리프트 — corpus_docs.py/golden 점검 필요):")
+        for d in drift:
+            print("   -", d)
     rows, rec, mrr, prec, scored = [], [], [], [], 0
     seen = set()  # 자기 케이스 top-k에 한 번이라도 등장한 golden id
     for c in cases:
