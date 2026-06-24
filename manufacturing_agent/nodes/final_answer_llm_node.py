@@ -178,10 +178,14 @@ def final_answer_node(state: ManufacturingState) -> dict:
 
     # 결정적: citation 최소 검증 + SQL 데이터 출처(drill-down) 부착
     answer, cited = _verify_citations(body, citations)
+    # 폴백: LLM이 자유 합성에서 인라인 [C#]를 하나도 달지 않아도, 검색된 근거가 있으면
+    # 통째로 묻히지 않게 전체 citation을 노출하고 [출처] 블록도 부착한다(프론트 칩 보장).
+    if not cited and citations:
+        cited = citations
+        answer = answer.rstrip() + "\n\n" + _format_citations(citations)
+    # 데이터 출처는 본문에 텍스트로 붙이지 않는다(원시 SQL 노출 방지 + 칩과 중복 제거).
+    # 프론트가 data_refs 필드로 [D#] drill-down 칩을 렌더한다.
     data_refs = _build_data_refs(sql)
-    data_block = _render_data_refs_block(data_refs)
-    if data_block:
-        answer = answer.rstrip() + "\n\n" + data_block
 
     fa = FinalAnswer(answer=answer, citations=cited, data_refs=data_refs,
                      warnings=warnings, missing_inputs=missing)

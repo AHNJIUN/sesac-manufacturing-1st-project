@@ -123,6 +123,7 @@ def _build_response(user_id: str, thread_id: str, result: dict, debug: bool) -> 
         answer = ""
 
     citations = list(getattr(final, "citations", []) or []) if final is not None else []
+    data_refs = list(getattr(final, "data_refs", []) or []) if final is not None else []
     warnings = list(getattr(final, "warnings", []) or []) if final is not None else []
     missing_inputs = list(getattr(final, "missing_inputs", []) or []) if final is not None else []
 
@@ -142,6 +143,7 @@ def _build_response(user_id: str, thread_id: str, result: dict, debug: bool) -> 
         thread_id=thread_id,
         answer=answer,
         citations=citations,
+        data_refs=data_refs,
         warnings=warnings,
         missing_inputs=missing_inputs,
         blocked=blocked,

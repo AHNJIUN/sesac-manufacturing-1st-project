@@ -60,9 +60,11 @@ export default function AssistantAnswer({ data }) {
   const [warnOpen, setWarnOpen] = useState(false)
   const [sqlOpen, setSqlOpen] = useState(false)
   const [openCite, setOpenCite] = useState(null)
+  const [openRef, setOpenRef] = useState(null)
   const {
     answer,
     citations = [],
+    data_refs = [],
     warnings = [],
     missing_inputs = [],
     blocked,
@@ -143,6 +145,39 @@ export default function AssistantAnswer({ data }) {
                       ) : (
                         <div className="muted small">미리볼 본문이 없습니다.</div>
                       )}
+                    </div>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
+
+      {data_refs.length > 0 && (
+        <div className="data-refs">
+          <div className="section-label">데이터 출처 {data_refs.length}건 (클릭하면 조회 내역)</div>
+          <ul className="cite-list">
+            {data_refs.map((d, i) => {
+              const id = d.ref_id ?? `D${i + 1}`
+              const open = openRef === id
+              const more = d.truncated ? '+' : ''
+              return (
+                <li key={id}>
+                  <button
+                    type="button"
+                    className={`cite-chip ${open ? 'open' : ''}`}
+                    onClick={() => setOpenRef(open ? null : id)}
+                  >
+                    <span className="cite-id">[{id}]</span>{' '}
+                    {d.label || '데이터'}
+                    <span className="cite-chunk"> · {d.row_count ?? 0}{more}행</span>
+                    {d.time_window && <span className="cite-chunk"> · {d.time_window}</span>}
+                    <span className="cite-caret">{open ? ' ▼' : ' ▶'}</span>
+                  </button>
+                  {open && (
+                    <div className="cite-detail">
+                      {d.sql && <div className="cite-snippet">{d.sql}</div>}
                     </div>
                   )}
                 </li>

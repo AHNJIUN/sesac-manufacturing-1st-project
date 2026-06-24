@@ -514,6 +514,21 @@ body {
   color: #1f2937;
 }
 
+/* 완료 후 답변 위에 남는 진행 단계: 살짝 죽인 톤 + 접이식 토글 */
+.progress-steps.completed {
+  background: transparent;
+  margin-bottom: 10px;
+}
+
+.progress-toggle {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
 .step-list {
   list-style: none;
   margin: 0;
