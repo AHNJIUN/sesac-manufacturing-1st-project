@@ -1,0 +1,438 @@
+{
+  "timestamp": "20260625_144947",
+  "n": 12,
+  "passed": 12,
+  "failed": 0,
+  "accuracy": 1.0,
+  "results": [
+    {
+      "id": "replan_001",
+      "scenario": "Evidence EMPTY → PATCH_AND_RERUN",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "retrieval_profile",
+          "focus",
+          "min_docs",
+          "repair_hint"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "focus",
+          "min_docs",
+          "repair_hint",
+          "retrieval_profile"
+        ],
+        "reason_summary": "Evidence task targeted replan"
+      }
+    },
+    {
+      "id": "replan_002",
+      "scenario": "Evidence EMPTY (focus 보강)",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "retrieval_profile",
+          "focus",
+          "min_docs",
+          "repair_hint"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "focus",
+          "min_docs",
+          "repair_hint",
+          "retrieval_profile"
+        ],
+        "reason_summary": "Evidence task targeted replan"
+      }
+    },
+    {
+      "id": "replan_003",
+      "scenario": "Evidence LOW_RELEVANCE → PATCH_AND_RERUN",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "retrieval_profile",
+          "focus",
+          "min_docs",
+          "repair_hint"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "focus",
+          "min_docs",
+          "repair_hint",
+          "retrieval_profile"
+        ],
+        "reason_summary": "Evidence task targeted replan"
+      }
+    },
+    {
+      "id": "replan_004",
+      "scenario": "Evidence LOW_RELEVANCE (combined intent)",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "retrieval_profile",
+          "focus",
+          "min_docs",
+          "repair_hint"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "focus",
+          "min_docs",
+          "repair_hint",
+          "retrieval_profile"
+        ],
+        "reason_summary": "Evidence task targeted replan"
+      }
+    },
+    {
+      "id": "replan_005",
+      "scenario": "SQL INVALID_REQUEST → ASK_USER",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "ASK_USER",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": []
+      },
+      "got": {
+        "action": "ASK_USER",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": [],
+        "reason_summary": "SQL 조회에 필요한 조건이 부족함"
+      }
+    },
+    {
+      "id": "replan_006",
+      "scenario": "SQL FAIL → PATCH_AND_RERUN",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ],
+        "reason_summary": "SQL task targeted replan"
+      }
+    },
+    {
+      "id": "replan_007",
+      "scenario": "SQL BLOCKED → PATCH_AND_RERUN",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ],
+        "reason_summary": "SQL task targeted replan"
+      }
+    },
+    {
+      "id": "replan_008",
+      "scenario": "SQL gate report (status=null)에도 sql_gate면 PATCH",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "repair_hint",
+          "strict_schema_check"
+        ],
+        "reason_summary": "SQL task targeted replan"
+      }
+    },
+    {
+      "id": "replan_009",
+      "scenario": "max_reruns 초과 (rerun_count=2, max=2) → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": []
+      },
+      "got": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "evidence_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": [],
+        "reason_summary": "evidence_1 max_reruns 초과"
+      }
+    },
+    {
+      "id": "replan_010",
+      "scenario": "max_reruns 초과 (rerun_count=3) → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": []
+      },
+      "got": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "sql_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": [],
+        "reason_summary": "sql_1 max_reruns 초과"
+      }
+    },
+    {
+      "id": "replan_011",
+      "scenario": "Prediction task — deterministic rule 없음 → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "prediction_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": []
+      },
+      "got": {
+        "action": "FINALIZE_WITH_WARNINGS",
+        "target_task_ids": [
+          "prediction_1"
+        ],
+        "invalidate_task_ids": [],
+        "patch_keys": [],
+        "reason_summary": "적용 가능한 deterministic replan rule 없음"
+      }
+    },
+    {
+      "id": "replan_012",
+      "scenario": "Hybrid LLM fallback (deterministic 포기 후 LLM 시도)",
+      "ok": true,
+      "checks": {
+        "action": true,
+        "target_task_ids": true,
+        "invalidate_final_1": true,
+        "patch_keys": true
+      },
+      "expected": {
+        "action_in": [
+          "PATCH_AND_RERUN",
+          "ASK_USER",
+          "FINALIZE_WITH_WARNINGS",
+          "BLOCK"
+        ],
+        "target_task_ids": [
+          "prediction_1"
+        ]
+      },
+      "got": {
+        "action": "PATCH_AND_RERUN",
+        "target_task_ids": [
+          "prediction_1"
+        ],
+        "invalidate_task_ids": [
+          "final_1"
+        ],
+        "patch_keys": [
+          "diagnosis_mode"
+        ],
+        "reason_summary": "진단 신뢰도 향상을 위해 조건 보강 필요"
+      }
+    }
+  ]
+}

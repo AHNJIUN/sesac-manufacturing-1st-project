@@ -1,0 +1,151 @@
+{
+  "timestamp": "20260625_143018",
+  "n": 12,
+  "accuracy": 1.0,
+  "per_class": {
+    "detail": {
+      "tp": 10,
+      "fn": 0,
+      "fp": 0
+    },
+    "aggregate": {
+      "tp": 2,
+      "fn": 0,
+      "fp": 0
+    }
+  },
+  "results": [
+    {
+      "id": "h_clear_1",
+      "msg": "최근 고장 이력과 대응 조치를 정리해줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.6166291236877441,
+      "correct": true
+    },
+    {
+      "id": "h_clear_2",
+      "msg": "과거 TWF 고장 사례와 조치를 보여줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.4172039031982422,
+      "correct": true
+    },
+    {
+      "id": "h_clear_3",
+      "msg": "고장 유형별 반복 패턴을 집계해줘",
+      "true": "aggregate",
+      "pred_set": [
+        "aggregate"
+      ],
+      "confidence": 0.9,
+      "latency": 1.3652117252349854,
+      "correct": true
+    },
+    {
+      "id": "h_clear_4",
+      "msg": "부품별 다운타임 합계를 정리해줘",
+      "true": "aggregate",
+      "pred_set": [
+        "aggregate"
+      ],
+      "confidence": 0.9,
+      "latency": 1.6493101119995117,
+      "correct": true
+    },
+    {
+      "id": "h_clear_5",
+      "msg": "지난 HIGH 심각도 고장만 조회해줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.081108808517456,
+      "correct": true
+    },
+    {
+      "id": "h_adv_1",
+      "msg": "최근에 문제 있었어?",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.1772499084472656,
+      "correct": true
+    },
+    {
+      "id": "h_adv_2",
+      "msg": "이력 좀 보여줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.0727908611297607,
+      "correct": true
+    },
+    {
+      "id": "c_clear_1",
+      "msg": "이 데이터로 진단하고 비슷한 과거 사례와 점검 문서까지 종합해줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.1631779670715332,
+      "correct": true
+    },
+    {
+      "id": "c_clear_3",
+      "msg": "이 측정값 기반 진단과 과거 유사 고장 사례를 정리해줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.6009480953216553,
+      "correct": true
+    },
+    {
+      "id": "c_clear_4",
+      "msg": "과거 유사 고장 사례와 그 원인 설명 문서 근거도 함께 줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 1.5363211631774902,
+      "correct": true
+    },
+    {
+      "id": "c_clear_5",
+      "msg": "지금 데이터 위험도와 매뉴얼 근거, 과거 사례 모두 정리해줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.95,
+      "latency": 1.138105869293213,
+      "correct": true
+    },
+    {
+      "id": "c_adv_2",
+      "msg": "진단이랑 비슷한 케이스 같이 알려줘",
+      "true": "detail",
+      "pred_set": [
+        "detail"
+      ],
+      "confidence": 0.9,
+      "latency": 0.9065978527069092,
+      "correct": true
+    }
+  ]
+}

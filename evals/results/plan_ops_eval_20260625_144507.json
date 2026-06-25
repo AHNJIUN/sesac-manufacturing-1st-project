@@ -1,0 +1,157 @@
+{
+  "timestamp": "20260625_144507",
+  "n": 14,
+  "passed": 14,
+  "failed": 0,
+  "accuracy": 1.0,
+  "results": [
+    {
+      "section": "apply_gate_report",
+      "id": "apply_001_PASS",
+      "expected": "PASS",
+      "got": "PASS",
+      "ok": true
+    },
+    {
+      "section": "apply_gate_report",
+      "id": "apply_002_PASS_WITH_WARNINGS",
+      "expected": "PASS_WITH_WARNINGS",
+      "got": "PASS_WITH_WARNINGS",
+      "ok": true
+    },
+    {
+      "section": "apply_gate_report",
+      "id": "apply_003_NEEDS_USER_INPUT",
+      "expected": "NEEDS_USER_INPUT",
+      "got": "NEEDS_USER_INPUT",
+      "ok": true
+    },
+    {
+      "section": "apply_gate_report",
+      "id": "apply_004_NON_RETRYABLE_FAIL",
+      "expected": "FAIL",
+      "got": "FAIL",
+      "ok": true
+    },
+    {
+      "section": "apply_gate_report",
+      "id": "apply_005_RETRYABLE_FAIL_budget",
+      "expected": "PENDING + retry_count=1",
+      "got": "PENDING + retry_count=1",
+      "ok": true
+    },
+    {
+      "section": "apply_gate_report",
+      "id": "apply_006_RETRYABLE_FAIL_exhausted",
+      "expected": "FAIL (예산 소진)",
+      "got": "FAIL",
+      "ok": true
+    },
+    {
+      "section": "next_runnable_batch",
+      "id": "batch_001_3worker_all",
+      "expected": [
+        "prediction_1",
+        "sql_1",
+        "evidence_1"
+      ],
+      "got": [
+        "prediction_1",
+        "sql_1",
+        "evidence_1"
+      ],
+      "ok": true
+    },
+    {
+      "section": "next_runnable_batch",
+      "id": "batch_002_exclude_final",
+      "expected": [
+        "prediction_1"
+      ],
+      "got": [
+        "prediction_1"
+      ],
+      "ok": true
+    },
+    {
+      "section": "next_runnable_batch",
+      "id": "batch_003_limit_2",
+      "expected": "len=2",
+      "got": "len=2",
+      "ok": true
+    },
+    {
+      "section": "next_runnable_batch",
+      "id": "batch_004_final_only",
+      "expected": [
+        "final_1"
+      ],
+      "got": [
+        "final_1"
+      ],
+      "ok": true
+    },
+    {
+      "section": "mark_running_batch",
+      "id": "mark_001_multi",
+      "expected": [
+        "RUNNING",
+        "RUNNING"
+      ],
+      "got": [
+        "RUNNING",
+        "RUNNING"
+      ],
+      "ok": true
+    },
+    {
+      "section": "mark_running_batch",
+      "id": "mark_002_idempotent",
+      "expected": "두 번 호출 동일",
+      "got": "out1=['RUNNING', 'RUNNING'], out2=['RUNNING', 'RUNNING']",
+      "ok": true
+    },
+    {
+      "section": "reset_orphan_running",
+      "id": "orphan_001_reset",
+      "expected": [
+        "PENDING",
+        "PENDING"
+      ],
+      "got": [
+        "PENDING",
+        "PENDING"
+      ],
+      "ok": true
+    },
+    {
+      "section": "reset_orphan_running",
+      "id": "orphan_002_keep",
+      "expected": "RUNNING (보존)",
+      "got": "RUNNING",
+      "ok": true
+    }
+  ],
+  "by_section": {
+    "apply_gate_report": {
+      "n": 6,
+      "passed": 6,
+      "accuracy": 1.0
+    },
+    "next_runnable_batch": {
+      "n": 4,
+      "passed": 4,
+      "accuracy": 1.0
+    },
+    "mark_running_batch": {
+      "n": 2,
+      "passed": 2,
+      "accuracy": 1.0
+    },
+    "reset_orphan_running": {
+      "n": 2,
+      "passed": 2,
+      "accuracy": 1.0
+    }
+  }
+}
