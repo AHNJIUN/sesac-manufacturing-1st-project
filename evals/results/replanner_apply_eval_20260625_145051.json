@@ -1,0 +1,168 @@
+{
+  "timestamp": "20260625_145051",
+  "n": 11,
+  "passed": 11,
+  "failed": 0,
+  "accuracy": 1.0,
+  "results": [
+    {
+      "id": "replan_001",
+      "scenario": "Evidence EMPTY → PATCH_AND_RERUN",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "evidence_1_status_PENDING": true,
+        "evidence_1_rerun_count_inc": true,
+        "evidence_1_retry_count_reset": true,
+        "evidence_1_params_keys": true,
+        "evidence_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_002",
+      "scenario": "Evidence EMPTY (focus 보강)",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "evidence_1_status_PENDING": true,
+        "evidence_1_rerun_count_inc": true,
+        "evidence_1_retry_count_reset": true,
+        "evidence_1_params_keys": true,
+        "evidence_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_003",
+      "scenario": "Evidence LOW_RELEVANCE → PATCH_AND_RERUN",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "evidence_1_status_PENDING": true,
+        "evidence_1_rerun_count_inc": true,
+        "evidence_1_retry_count_reset": true,
+        "evidence_1_params_keys": true,
+        "evidence_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_004",
+      "scenario": "Evidence LOW_RELEVANCE (combined intent)",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "evidence_1_status_PENDING": true,
+        "evidence_1_rerun_count_inc": true,
+        "evidence_1_retry_count_reset": true,
+        "evidence_1_params_keys": true,
+        "evidence_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_005",
+      "scenario": "SQL INVALID_REQUEST → ASK_USER",
+      "ok": true,
+      "decision_action": "ASK_USER",
+      "checks": {
+        "sql_1_status_NEEDS_USER_INPUT": true,
+        "plan_revision_inc": true
+      }
+    },
+    {
+      "id": "replan_006",
+      "scenario": "SQL FAIL → PATCH_AND_RERUN",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "sql_1_status_PENDING": true,
+        "sql_1_rerun_count_inc": true,
+        "sql_1_retry_count_reset": true,
+        "sql_1_params_keys": true,
+        "sql_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_007",
+      "scenario": "SQL BLOCKED → PATCH_AND_RERUN",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "sql_1_status_PENDING": true,
+        "sql_1_rerun_count_inc": true,
+        "sql_1_retry_count_reset": true,
+        "sql_1_params_keys": true,
+        "sql_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_008",
+      "scenario": "SQL gate report (status=null)에도 sql_gate면 PATCH",
+      "ok": true,
+      "decision_action": "PATCH_AND_RERUN",
+      "checks": {
+        "sql_1_status_PENDING": true,
+        "sql_1_rerun_count_inc": true,
+        "sql_1_retry_count_reset": true,
+        "sql_1_params_keys": true,
+        "sql_1_feedback_history_grew": true,
+        "final_1_PENDING": true,
+        "plan_revision_inc": true,
+        "replan_count_inc": true,
+        "replan_history_appended": true
+      }
+    },
+    {
+      "id": "replan_009",
+      "scenario": "max_reruns 초과 (rerun_count=2, max=2) → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "decision_action": "FINALIZE_WITH_WARNINGS",
+      "checks": {
+        "evidence_1_status_PASS_WITH_WARNINGS": true,
+        "plan_revision_inc": true
+      }
+    },
+    {
+      "id": "replan_010",
+      "scenario": "max_reruns 초과 (rerun_count=3) → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "decision_action": "FINALIZE_WITH_WARNINGS",
+      "checks": {
+        "sql_1_status_PASS_WITH_WARNINGS": true,
+        "plan_revision_inc": true
+      }
+    },
+    {
+      "id": "replan_011",
+      "scenario": "Prediction task — deterministic rule 없음 → FINALIZE_WITH_WARNINGS",
+      "ok": true,
+      "decision_action": "FINALIZE_WITH_WARNINGS",
+      "checks": {
+        "prediction_1_status_PASS_WITH_WARNINGS": true,
+        "plan_revision_inc": true
+      }
+    }
+  ]
+}

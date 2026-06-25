@@ -1,0 +1,38 @@
+Vector backend: pinecone
+Pinecone index: sesacline-agent-docs | API key: OK
+LangSmith upload check: OK
+PlanOps 상태 전이 회귀 테스트
+
+━━━ apply_gate_report (6 케이스) ━━━
+  [apply_001_PASS                        ] ✅
+  [apply_002_PASS_WITH_WARNINGS          ] ✅
+  [apply_003_NEEDS_USER_INPUT            ] ✅
+  [apply_004_NON_RETRYABLE_FAIL          ] ✅
+  [apply_005_RETRYABLE_FAIL_budget       ] ✅
+  [apply_006_RETRYABLE_FAIL_exhausted    ] ✅
+
+━━━ next_runnable_batch (4 케이스) ━━━
+  [batch_001_3worker_all                 ] ✅
+  [batch_002_exclude_final               ] ✅
+  [batch_003_limit_2                     ] ✅
+  [batch_004_final_only                  ] ✅
+
+━━━ mark_running_batch (2 케이스) ━━━
+  [mark_001_multi                        ] ✅
+  [mark_002_idempotent                   ] ✅
+
+━━━ reset_orphan_running (2 케이스) ━━━
+  [orphan_001_reset                      ] ✅
+  [orphan_002_keep                       ] ✅
+
+============================================================
+PlanOps 회귀 평가 결과
+============================================================
+  apply_gate_report      6/6 = 1.0000
+  next_runnable_batch    4/4 = 1.0000
+  mark_running_batch     2/2 = 1.0000
+  reset_orphan_running   2/2 = 1.0000
+  ──────────────────────────────────────────────────
+  전체                     14/14 = 1.0000
+
+저장: evals/results/plan_ops_eval_20260625_144507.json

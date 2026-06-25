@@ -1,0 +1,22 @@
+Vector backend: pinecone
+Pinecone index: sesacline-agent-docs | API key: OK
+LangSmith upload check: OK
+케이스: 11건 (hybrid 제외)
+
+  [replan_001  ] ✅ action=PATCH_AND_RERUN
+  [replan_002  ] ✅ action=PATCH_AND_RERUN
+  [replan_003  ] ✅ action=PATCH_AND_RERUN
+  [replan_004  ] ✅ action=PATCH_AND_RERUN
+  [replan_005  ] ✅ action=ASK_USER
+  [replan_006  ] ✅ action=PATCH_AND_RERUN
+  [replan_007  ] ✅ action=PATCH_AND_RERUN
+  [replan_008  ] ✅ action=PATCH_AND_RERUN
+  [replan_009  ] ✅ action=FINALIZE_WITH_WARNINGS
+  [replan_010  ] ✅ action=FINALIZE_WITH_WARNINGS
+  [replan_011  ] ✅ action=FINALIZE_WITH_WARNINGS
+
+============================================================
+Replanner Apply 무결성 평가 결과
+============================================================
+정확도 : 11/11 = 1.0000
+저장   : evals/results/replanner_apply_eval_20260625_145051.json

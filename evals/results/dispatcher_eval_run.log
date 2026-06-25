@@ -1,0 +1,31 @@
+Vector backend: pinecone
+Pinecone index: sesacline-agent-docs | API key: OK
+LangSmith upload check: OK
+케이스: 12건
+
+  [disp_001  ] ✅ action=DISPATCH_BATCH, next=prediction_agent, ids=['evidence_1', 'prediction_1', 'sql_1']
+  [disp_002  ] ✅ action=DISPATCH_BATCH, next=prediction_agent, ids=['prediction_1', 'sql_1']
+  [disp_003  ] ✅ action=DISPATCH_BATCH, next=sql_agent, ids=['evidence_1', 'sql_1']
+  [disp_004  ] ✅ action=DISPATCH_TASK, next=prediction_agent, ids=['prediction_1']
+  [disp_005  ] ✅ action=RETRY_TASK, next=prediction_agent, ids=['prediction_1']
+  [disp_006  ] ✅ action=RETRY_TASK, next=sql_agent, ids=['sql_1']
+  [disp_007  ] ✅ action=FINALIZE, next=final_answer, ids=['final_1']
+  [disp_008  ] ✅ action=FINALIZE, next=final_answer, ids=['final_1']
+  [disp_009  ] ✅ action=REPLAN, next=supervisor_replanner, ids=['evidence_1']
+  [disp_010  ] ✅ action=REPLAN, next=supervisor_replanner, ids=['sql_1']
+  [disp_011  ] ✅ action=DISPATCH_TASK, next=sql_agent, ids=['sql_1']
+  [disp_012  ] ✅ ValueError 발생
+
+[Idempotency 테스트] 같은 입력 5회 반복 (disp_001)
+  반복 1: ('DISPATCH_BATCH', 'prediction_agent', ('evidence_1', 'prediction_1', 'sql_1'))
+  반복 2: ✅ 일치
+  반복 3: ✅ 일치
+  반복 4: ✅ 일치
+  반복 5: ✅ 일치
+
+============================================================
+Dispatcher 평가 결과
+============================================================
+Action / routing 정확도 : 12/12 = 1.0000
+Idempotency             : ✅ 통과
+저장                    : evals/results/dispatcher_eval_20260625_144353.json

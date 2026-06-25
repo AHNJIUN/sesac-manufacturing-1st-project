@@ -1,0 +1,233 @@
+{
+  "timestamp": "20260625_144353",
+  "n": 12,
+  "passed": 12,
+  "failed": 0,
+  "accuracy": 1.0,
+  "idempotent": true,
+  "idempotency_differences": [],
+  "results": [
+    {
+      "id": "disp_001",
+      "scenario": "3-worker batch dispatch (parallel ON)",
+      "ok": true,
+      "expected": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "evidence_1",
+          "prediction_1",
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "evidence_1",
+          "prediction_1",
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_002",
+      "scenario": "2-worker batch (prediction + sql)",
+      "ok": true,
+      "expected": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1",
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1",
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_003",
+      "scenario": "evidence + sql (prediction 없음)",
+      "ok": true,
+      "expected": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "evidence_1",
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "DISPATCH_BATCH",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "evidence_1",
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_004",
+      "scenario": "단일 worker (parallel OFF, limit=1)",
+      "ok": true,
+      "expected": {
+        "action": "DISPATCH_TASK",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1"
+        ]
+      },
+      "got": {
+        "action": "DISPATCH_TASK",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_005",
+      "scenario": "RETRY_TASK (retry_count=1, status=PENDING)",
+      "ok": true,
+      "expected": {
+        "action": "RETRY_TASK",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1"
+        ]
+      },
+      "got": {
+        "action": "RETRY_TASK",
+        "next_node": "prediction_agent",
+        "dispatched_task_ids": [
+          "prediction_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_006",
+      "scenario": "RETRY (rerun_count=1, status=PENDING)",
+      "ok": true,
+      "expected": {
+        "action": "RETRY_TASK",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "RETRY_TASK",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_007",
+      "scenario": "FINALIZE (모든 worker PASS)",
+      "ok": true,
+      "expected": {
+        "action": "FINALIZE",
+        "next_node": "final_answer",
+        "dispatched_task_ids": [
+          "final_1"
+        ]
+      },
+      "got": {
+        "action": "FINALIZE",
+        "next_node": "final_answer",
+        "dispatched_task_ids": [
+          "final_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_008",
+      "scenario": "FINALIZE (worker 1개 PASS_WITH_WARNINGS)",
+      "ok": true,
+      "expected": {
+        "action": "FINALIZE",
+        "next_node": "final_answer",
+        "dispatched_task_ids": [
+          "final_1"
+        ]
+      },
+      "got": {
+        "action": "FINALIZE",
+        "next_node": "final_answer",
+        "dispatched_task_ids": [
+          "final_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_009",
+      "scenario": "REPLAN (evidence_gate PLAN_REPAIR_REQUIRED)",
+      "ok": true,
+      "expected": {
+        "action": "REPLAN",
+        "next_node": "supervisor_replanner",
+        "dispatched_task_ids": [
+          "evidence_1"
+        ]
+      },
+      "got": {
+        "action": "REPLAN",
+        "next_node": "supervisor_replanner",
+        "dispatched_task_ids": [
+          "evidence_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_010",
+      "scenario": "REPLAN (sql_gate PLAN_REPAIR_REQUIRED)",
+      "ok": true,
+      "expected": {
+        "action": "REPLAN",
+        "next_node": "supervisor_replanner",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "REPLAN",
+        "next_node": "supervisor_replanner",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_011",
+      "scenario": "Orphan RUNNING 회수 (active_task_ids에 없는 RUNNING)",
+      "ok": true,
+      "expected": {
+        "action": "DISPATCH_TASK",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      },
+      "got": {
+        "action": "DISPATCH_TASK",
+        "next_node": "sql_agent",
+        "dispatched_task_ids": [
+          "sql_1"
+        ]
+      }
+    },
+    {
+      "id": "disp_012",
+      "ok": true,
+      "msg": "예상 에러: ValueError"
+    }
+  ]
+}

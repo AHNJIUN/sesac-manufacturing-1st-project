@@ -1,0 +1,28 @@
+Vector backend: pinecone
+Pinecone index: sesacline-agent-docs | API key: OK
+LangSmith upload check: OK
+평가 대상: 12건
+라벨 분포: Counter({'detail': 10, 'aggregate': 2})
+
+  1/12 [h_clear_1   ] true=detail, pred={'detail'}, ok=True
+  2/12 [h_clear_2   ] true=detail, pred={'detail'}, ok=True
+  3/12 [h_clear_3   ] true=aggregate, pred={'aggregate'}, ok=True
+  4/12 [h_clear_4   ] true=aggregate, pred={'aggregate'}, ok=True
+  5/12 [h_clear_5   ] true=detail, pred={'detail'}, ok=True
+  6/12 [h_adv_1     ] true=detail, pred={'detail'}, ok=True
+  7/12 [h_adv_2     ] true=detail, pred={'detail'}, ok=True
+  8/12 [c_clear_1   ] true=detail, pred={'detail'}, ok=True
+  9/12 [c_clear_3   ] true=detail, pred={'detail'}, ok=True
+  10/12 [c_clear_4   ] true=detail, pred={'detail'}, ok=True
+  11/12 [c_clear_5   ] true=detail, pred={'detail'}, ok=True
+  12/12 [c_adv_2     ] true=detail, pred={'detail'}, ok=True
+
+============================================================
+SQL Query Intents 평가 결과
+============================================================
+Accuracy: 1.0000 (12/12)
+
+  detail    : TP=10 FN=0 FP=0
+  aggregate : TP=2 FN=0 FP=0
+
+저장: evals/results/sql_intent_eval_20260625_143018.json

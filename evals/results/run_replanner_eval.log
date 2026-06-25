@@ -1,0 +1,23 @@
+Vector backend: pinecone
+Pinecone index: sesacline-agent-docs | API key: OK
+LangSmith upload check: OK
+케이스: 12건
+
+  [replan_001  ] ✅ action=PATCH_AND_RERUN, targets=['evidence_1']
+  [replan_002  ] ✅ action=PATCH_AND_RERUN, targets=['evidence_1']
+  [replan_003  ] ✅ action=PATCH_AND_RERUN, targets=['evidence_1']
+  [replan_004  ] ✅ action=PATCH_AND_RERUN, targets=['evidence_1']
+  [replan_005  ] ✅ action=ASK_USER, targets=['sql_1']
+  [replan_006  ] ✅ action=PATCH_AND_RERUN, targets=['sql_1']
+  [replan_007  ] ✅ action=PATCH_AND_RERUN, targets=['sql_1']
+  [replan_008  ] ✅ action=PATCH_AND_RERUN, targets=['sql_1']
+  [replan_009  ] ✅ action=FINALIZE_WITH_WARNINGS, targets=['evidence_1']
+  [replan_010  ] ✅ action=FINALIZE_WITH_WARNINGS, targets=['sql_1']
+  [replan_011  ] ✅ action=FINALIZE_WITH_WARNINGS, targets=['prediction_1']
+  [replan_012  ] ✅ action=PATCH_AND_RERUN, targets=['prediction_1']
+
+============================================================
+Replanner 평가 결과
+============================================================
+정확도 : 12/12 = 1.0000
+저장   : evals/results/replanner_eval_20260625_144947.json
